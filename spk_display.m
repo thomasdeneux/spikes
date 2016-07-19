@@ -100,7 +100,9 @@ invertedorder = false;
 % small format changes
 if isempty(spikes)
     % no spike data -> get number of trials from the calcium!
-    if isnumeric(calcium)
+    if isempty(calcium)
+        ntrial = 1;
+    elseif isnumeric(calcium)
         if isvector(calcium)
             ntrial = 1;
         else
@@ -297,7 +299,7 @@ end
 xx = double(calcium{1});
 avgcalcium = mean(xx);
 dodf = (avgcalcium(1)>.9 && avgcalcium(1)<1.1);
-Flabel = fn_switch(dodf,'DF/F','F');
+Flabel = fn_switch(dodf,'\DeltaF/F','F');
 
 % Axis size and spike positions
 if isempty(ylim)
