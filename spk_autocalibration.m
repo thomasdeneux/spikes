@@ -389,7 +389,8 @@ else
     % was 0.05 in the original code for OGB, but this is not smoothing
     % enough in the case of gcamp6s; here is a small heuristic to
     % automatically set its value
-    sigmaa = applynonlinearity(1,pax)*max(pax.amax/2,geo_mean([pax.amin pax.amax])); 
+    amean = sqrt(pax.amin*pax.amax); % geometric mean
+    sigmaa = applynonlinearity(1,pax)*max(pax.amax/2,amean); 
 end
 allampsf = fn_filt(allamps,sigmaa/da,'mask',m); 
 allampsff = allampsf ./ (fn_filt(allamps,2*sigmaa/da,'mask',m)+1e-6); % +1e-6 to avoid NaNs
