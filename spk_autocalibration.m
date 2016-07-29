@@ -45,7 +45,7 @@ if isstruct(varargin{2})
 else
     sigmaonly = strcmp(varargin{end},'sigmaonly');
     if sigmaonly, varargin(end)=[]; end
-    pax = defaultpar(varargin{2:end});
+    pax = defaultpar(varargin{2:end},'intern');
 end
 [tau amp sigmaest events] = autocalibration(calcium,pax,sigmaonly); 
 if sigmaonly
@@ -58,7 +58,7 @@ function [tau amp sigmaest eventdesc] = autocalibration(calcium,pax,sigmaonly)
 
 % input
 if ~iscell(calcium), calcium = {calcium}; end
-calcium = fn_map(@column,calcium);
+calcium = fn_map(@(c)c(:)/mean(c(:)),calcium);
 ntrial = length(calcium);
 for k=1:ntrial, calcium{k} = double(calcium{k}); end % needed for call to fmincon later
 dt = pax.dt;
@@ -270,22 +270,29 @@ for i=1:ntrial
     modcalcium{i} = calcium{i}-drift{i}.*(othercalcium-1);
 end
 
-% no event found?
-idx = find(anyevent);
-if isempty(idx)
-    disp 'auto-calibration failed: no isolated event found!'
-    [tau amp eventdesc] = deal([]);
-    return
-end
-
 % display
+idx = find(anyevent);
 if dodisplay
     spk_display(dt,{realspikes keptnn},{calcium fit drift},'stats','none','in',hp1)
     if dopause, pause, end
     if dosave, print(hf,'-dpsc2',[figsavename '.ps'],'-append'), end
-    spk_display(dt(idx),{realspikes(idx) keptnn(idx)},{modcalcium(idx)},'stats','none','in',hp2)
+    if isempty(idx)
+        delete(get(hp2,'children'))
+        ha=axes('parent',hp2);
+        text(.5,.5,'auto-calibration failed: no isolated event found!', ...
+            'horizontalalignment','center','fontweight','bold','parent',ha)
+    else
+        spk_display(dt(idx),{realspikes(idx) keptnn(idx)},{modcalcium(idx)},'stats','none','in',hp2)
+    end
     drawnow
     if dopause, pause, end
+end
+
+% no event found?
+if isempty(idx)
+    warning 'auto-calibration failed: no isolated event found!'
+    [tau amp eventdesc] = deal([]);
+    return
 end
 
 % restrict the analysis to kept trials
@@ -357,17 +364,23 @@ for i=1:ntrial1
     fit1{i} = fit1{i}+modcalciumflow1{i};    
 end
 
-% check again that not all events where thrown out
-if all(fn_isemptyc(keptevents1))
-    disp 'auto-calibration failed: no isolated event found!'
-    [tau amp] = deal([]);
-    return
-end
-
 if dodisplay
     spk_display(dt1,{realspikes1 nn1},{modcalcium1 fit1},'stats','none','in',hp2)
+    if all(fn_isemptyc(keptevents1))
+        ha = findall(hp2,'type','axes');
+        ax = axis(ha);
+        text(mean(ax(1:2)),ax(3)+diff(ax(3:4))/4,'auto-calibration failed: the few isolated event(s) found were judged too small!', ...
+            'parent',ha,'horizontalalignment','center','fontweight','bold')
+    end
     drawnow
     if dopause, pause, end
+end
+
+% check again that not all events where thrown out
+if all(fn_isemptyc(keptevents1))
+    warning 'auto-calibration failed: the few isolated event(s) found were judged too small!'
+    [tau amp eventdesc] = deal([]);
+    return
 end
 
 
@@ -377,7 +390,7 @@ if dodisplay, disp 'histogram and assign number of spikes to events', end
 
 % histogram of event amplitudes 
 da = .001;
-aa = (0:da:applynonlinearity(6,pax)*pax.amax); % event amplitudes, not values of a
+aa = (0:da:applynonlinearity(20,pax)*pax.amax); % event amplitudes, not values of a
 na = length(aa);
 allamps = fn_timevector(cat(1,amps{:}),aa); % 'histogram' of event amplitudes
 
@@ -427,7 +440,9 @@ for i=1:ntrial1
     for j=1:nspki
         nspj = find(amps{i}(j)<=asep,1,'first');
         if isempty(nspj)
-            error 'a detected calcium event was assigned a burst of more than 20 spikes, this might degrade the autocalibration accuracy, please reduce parameter ''maxamp'' to avoid such events to be considered'
+            warning 'auto-calibration failed: a detected calcium event was assigned a burst of more than 20 spikes, this degrades the autocalibration accuracy, please reduce parameter ''maxamp'' to prevent this event of being kept, or increase ''amin'' so less spikes will be assigned to it'
+            [tau amp eventdesc] = deal([]);
+            return
         end
         spikes1{i} = [spikes1{i} keptevents1{i}(j)*ones(1,nspj)];
         eventdesc(i).num(j) = nspj;
