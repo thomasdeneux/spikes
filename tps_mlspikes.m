@@ -1706,6 +1706,7 @@ hf = 253;
 if ~ishandle(hf)
     figure(hf)
     fn_setfigsize(hf,400,800)
+    colormap(hf,'gray')
     set(hf,'numbertitle','off','name','tps_mlspike GRAPH SUMMARY',...
         'handlevisibility','off')
     ha = [];
@@ -1720,7 +1721,6 @@ if isempty(ha)
     ha = zeros(1,4);
     for i=1:4
         ha(i) = subplot(4,1,i,'parent',hf); 
-        colormap(ha(i),'gray') % cannot do colormap(hf,'gray') on old Matlab versions
     end
     set(ha,'xtick',[],'ytick',[],'box','on')
 end
