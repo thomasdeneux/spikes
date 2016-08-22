@@ -5,7 +5,10 @@ function varargout = spk_autocalibration(varargin)
 %---
 % 
 % Input:
-% - calcium     calcium signals
+% - calcium     calcium signals (can be the raw signal or after division by
+%               average value, i.e. with mean value around 1; but mean
+%               value should not be subtracted, i.e. algorithm will fail if
+%               mean or baseline value is around zero)
 % - 'sigmaonly' flag for estimating only sigma; note that it is more
 %               appropriate to call function spk_autosigma directly
 % 

@@ -402,21 +402,21 @@ if dorise
         error 'rise time only implemented together with a drifting state'
     end
     if doMAP
-        [n Ffit par.F0 LL xest] = maxposterior_driftstaterise(F,par);
+        [n Ffit par.F0 LL xest] = backward_driftstaterise(F,par);
     else
         error 'rise time only implemented for MAP estimations'
     end
 elseif ~dobaseline
     par.algo.nb = 1;
     par.F0 = par.F0*[1 1];
-    [n Ffit par.F0 LL xest] = maxposterior_fixbaseline(F,par);
+    [n Ffit par.F0 LL xest] = backward_fixbaseline(F,par);
 elseif ~dodrift
     % no drift; first estimate F0 by trying a number of different baselines
     if strcmp(par.display,'steps'), disp 'estimate fix baseline', drawnow, end %#ok<DUALC>
-    [n Ffit par.F0 LL xest] = maxposterior_fixbaseline(F,par);
+    [n Ffit par.F0 LL xest] = backward_fixbaseline(F,par);
 else
     if strcmp(par.display,'steps'), disp 'estimate drifting baseline', end
-    [n Ffit par.F0 LL xest] = maxposterior_driftstate(F,par);
+    [n Ffit par.F0 LL xest] = backward_driftstate(F,par);
 end    
 
 % "Assemble" the drift
@@ -448,7 +448,7 @@ end
 
 %-------------------------------------------------------------------------%
 % no drift, test one or multiple baseline values
-function [n Ffit F0 LL xest yfit]= maxposterior_fixbaseline(F,par)
+function [n Ffit F0 LL xest yfit]= backward_fixbaseline(F,par)
 
 DEBUG = eval('false');
 
@@ -512,7 +512,6 @@ M2 = interp1(cc,eye(nc),cc2,interpmode);
 M3 = interp1(cc,eye(nc),cc3,interpmode);
 if doMAP
     MM = [M0; M1; M2; M3];
-    MM = sparse(MM);
 end
 
 % Precomputations for the spike likelihood
@@ -765,7 +764,7 @@ F0 = baseline*F0;
 
 %-------------------------------------------------------------------------%
 % baseline drift
-function [n Ffit F0 LL xest yfit]= maxposterior_driftstate(F,par)
+function [n Ffit F0 LL xest yfit]= backward_driftstate(F,par)
 
 DEBUG = eval('false');
 
@@ -842,10 +841,8 @@ if nonintegerspike==0
     M3 = interp1(cc,eye(nc),cc3,interpmode);
     if doMAP
         MM = [M0; M1; M2; M3];
-        MM = sparse(MM);
     end
 else
-    M0 = sparse(M0);
     minjump = ceil(nonintegerspike/dc); % minimal calcium jump of an event
 end
 
@@ -963,7 +960,13 @@ end
 % between t and t+1 and the baseline drift that give this best likelihood
 % N(c,b,t) = argmin_n(t+1) min_{x(t+2),..,x(T)}        -log(p(n(t+1),x(t+2),..,x(T),y(t+1),..,y(T)|c(t)=c,b(t+1)=b))
 % D(c,b,t) = argmin_b(t+1) min_{n(t+1),x(t+2),..,x(T)} -log(p(x(t+1),x(t+2),..,x(T),y(t+1),..,y(T)|c(t)=c,b(t)=b))
-if ~doMAP, L = zeros(nc,nb,T); end
+if ~doMAP
+    try
+        L = zeros(nc,nb,T); 
+    catch
+        L = zeros(nc,nb,T,'single'); 
+    end
+end
 if doMAP
     D = zeros(nc,nb,T,'single');
     if nonintegerspike==0
@@ -1198,9 +1201,13 @@ if par.dographsummary
     % probabilities (MAP and samples: from future only; proba: full posterior)
     showproba = doproba;
     if showproba
-        P = L; for t=1:T, P(:,:,t) = log2proba(L(:,:,t)); end
-        PC = fn_normalize(sum(P,2),1,'proba');
-        PB = fn_normalize(sum(P,1),2,'proba');
+        PC = zeros(nc,T);
+        PB = zeros(nb,T);
+        for t=1:T
+            Pt = log2proba(L(:,:,t));
+            PC(:,t) = fn_normalize(sum(Pt,2),1,'proba');
+            PB(:,t) = fn_normalize(sum(Pt,1),2,'proba');
+        end
     end
     % init graphics
     ha = initgraphsummary();
@@ -1208,9 +1215,8 @@ if par.dographsummary
     % calcium & baseline
     im = .8+.02*(-1).^(1:nc)'*ones(1,T);
     if showproba
-        blue = squeeze(PC);
-        im = repmat(im.*(1-blue),[1 1 3]);
-        im(:,:,3) = im(:,:,3)+blue;
+        im = repmat(im.*(1-PC),[1 1 3]);
+        im(:,:,3) = im(:,:,3)+PC;
         imagesc(tt,cc,im,'parent',ha(1))
     else
         imagesc(tt,cc,im,'parent',ha(1),[0 1])
@@ -1220,9 +1226,8 @@ if par.dographsummary
     %     set(ha(1),'ylim',[min(xest(:,1))-2*dc max(xest(:,1))+2*dc])
     im = .8+.02*(-1).^(1:nb)'*ones(1,T);
     if showproba
-        blue = squeeze(PB);
-        im = repmat(im.*(1-blue),[1 1 3]);
-        im(:,:,3) = im(:,:,3)+blue;
+        im = repmat(im.*(1-PB),[1 1 3]);
+        im(:,:,3) = im(:,:,3)+PB;
         imagesc(tt,bb*F0,im,'parent',ha(2),[0 1])
     else
         imagesc(tt,bb*F0,im,'parent',ha(2),[0 1])
@@ -1266,7 +1271,7 @@ xest(:,2,:) = xest(:,2,:) / avgb;
 
 %-------------------------------------------------------------------------%
 % baseline drift and rise time
-function [n Ffit F0 LL xest yfit]= maxposterior_driftstaterise(F,par)
+function [n Ffit F0 LL xest yfit]= backward_driftstaterise(F,par)
 
 DEBUG = false;
 
@@ -1360,7 +1365,6 @@ M1 = interp1(cc,eye(nc),cc1,par.algo.interpmode);
 % MM = [M0; M1; M2; M3];
 if doMAP
     MM = [M0; M1];
-    MM = sparse(MM);
 end
 
 % Precomputations for the spike likelihood
@@ -1396,7 +1400,6 @@ for ic=1:nc
 end
 PP = blkdiag(PP{:}); % (np*nc)^2 square matrix
 PP = reshape(permute(reshape(PP,[np nc np nc]),[2 1 4 3]),[nc*np nc*np]); % (nc*np)^2 squarematrix
-PP = sparse(PP);
 
 % Precomputation for the baseline drift
 % (drifting matrix)
