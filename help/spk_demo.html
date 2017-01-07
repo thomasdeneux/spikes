@@ -1,0 +1,389 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>MLspike and autocalibration demo</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2017-01-07"><meta name="DC.source" content="spk_demo.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>MLspike and autocalibration demo</h1><!--introduction--><p>This script demonstrates on simulated data how to use the MLspike and autocalibration algorithms. To see how to run the algorithms, go directly to section 'Spike estimation'.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Generate spikes</a></li><li><a href="#2">Random A and tau, and random level of noise</a></li><li><a href="#3">Generate calcium</a></li><li><a href="#4">Spike estimation (using naive parameters)</a></li><li><a href="#6">Auto-calibration</a></li><li><a href="#8">Spike estimation (using autocalibrated parameters)</a></li></ul></div><h2>Generate spikes<a name="1"></a></h2><p>We first generate some simulated data. Spike trains are generated using spk_gentrain function (the data consists of 6 trials of 30s).</p><p>Note the usefull function spk_display to display both spikes and calcium time courses.</p><pre class="codeinput"><span class="comment">% parameters</span>
+ntrial = 6;
+T = 30;
+rate = 1;
+
+<span class="comment">% generate spikes</span>
+spikes = spk_gentrain(rate,T,<span class="string">'bursty'</span>,<span class="string">'repeat'</span>,ntrial);
+
+<span class="comment">% display</span>
+figure(1)
+spk_display([],spikes,[])
+</pre><img vspace="5" hspace="5" src="spk_demo_01.png" alt=""> <h2>Random A and tau, and random level of noise<a name="2"></a></h2><p>We draw randomly the parameters governing the calcium dynamics A (DF/F amplitude for one spike) and tau (decay time constant), as well as the level of noise in the data, sigma.</p><pre class="codeinput">amin = .04;
+amax = .1;
+a = amin * exp(rand(1)*log(amax/amin)) <span class="comment">% log-uniform distribution</span>
+
+taumin = .4;
+taumax = 1.6;
+tau = taumin * exp(rand(1)*log(taumax/taumin))
+
+sigmamin = .005;
+sigmamax = .05;
+sigma = sigmamin * exp(rand(1)*log(sigmamax/sigmamin))
+</pre><pre class="codeoutput">
+a =
+
+    0.0907
+
+
+tau =
+
+    0.5398
+
+
+sigma =
+
+    0.0257
+
+</pre><h2>Generate calcium<a name="3"></a></h2><p>We generate calcium signals corresponding to the above spike trains using these parameters. Note that some additional parameters (OGB dye saturation and drift parameter) are fixed.</p><pre class="codeinput"><span class="comment">% parameters</span>
+dt = .02; <span class="comment">% 50Hz acquisition</span>
+pcal = spk_calcium(<span class="string">'par'</span>);
+pcal.dt = dt;
+pcal.a = a;
+pcal.tau = tau;
+pcal.saturation = .1; <span class="comment">% saturation level is fixed</span>
+pcal.sigma = sigma; <span class="comment">% noise level</span>
+pcal.drift.parameter = [5 .015]; <span class="comment">% drift level (#harmonics and amplitude of them)</span>
+
+<span class="comment">% generate calcium</span>
+calcium = spk_calcium(spikes,pcal);
+
+<span class="comment">% display</span>
+figure(1)
+spk_display(dt,spikes,calcium)
+drawnow
+</pre><img vspace="5" hspace="5" src="spk_demo_02.png" alt=""> <h2>Spike estimation (using naive parameters)<a name="4"></a></h2><p>We first apply the MLspike algorithm using some fixed parameters. To run the algorithm on other data, set variable 'calcium' as a vector time courses of the calcium signal if there is only one trial, or to a cell array of such time courses if there are many trials.</p><pre class="codeinput"><span class="comment">% parameters</span>
+<span class="comment">% (get the default parameters)</span>
+par = tps_mlspikes(<span class="string">'par'</span>);
+<span class="comment">% (indicate the frame duration of the data)</span>
+par.dt = dt;
+<span class="comment">% (set physiological parameters)</span>
+par.a = 0.07; <span class="comment">% DF/F for one spike</span>
+par.tau = 1; <span class="comment">% decay time constant (second)</span>
+par.saturation = 0.1; <span class="comment">% OGB dye saturation</span>
+<span class="comment">% (set noise parameters)</span>
+par.finetune.sigma = .02; <span class="comment">% a priori level of noise (if par.finetune.sigma</span>
+                          <span class="comment">% is left empty, MLspike has a low-level routine</span>
+                          <span class="comment">% to try estimating it from the data</span>
+par.drift.parameter = .01; <span class="comment">% if par.drift parameter is not set, the</span>
+                           <span class="comment">% algorithm assumes that the baseline remains</span>
+                           <span class="comment">% flat; it is also possible to tell the</span>
+                           <span class="comment">% algorithm the value of the baseline by setting</span>
+                           <span class="comment">% par.F0</span>
+<span class="comment">% (do not display graph summary)</span>
+par.dographsummary = false;
+
+<span class="comment">% spike estimation</span>
+[spikest fit drift] = spk_est(calcium,par);
+
+<span class="comment">% display</span>
+figure(1)
+spk_display(dt,{spikes spikest},{calcium fit drift})
+set(1,<span class="string">'numbertitle'</span>,<span class="string">'off'</span>,<span class="string">'name'</span>,<span class="string">'MLspike alone'</span>)
+</pre><pre class="codeoutput">tps_mlspike 6/6
+</pre><img vspace="5" hspace="5" src="spk_demo_03.png" alt=""> <p>The above graphs compare spikes estimated using autocalibration followed by MLspike (in black) with the original spikes (in red), as well as the estimated drift (dashed black) and fit to data. Because the parameters A, tau and sigma used for the estimation might not be appropriate, the estimation might not be very successful.</p><h2>Auto-calibration<a name="6"></a></h2><p>Now we want to estimate the original spikes from the calcium signals rather than using fixed parameter. First we run the autocalibration algorithm to attempt estimating, from the calcium signals directly, the values of parameters A, tau and sigma.</p><pre class="codeinput"><span class="comment">% parameters</span>
+<span class="comment">% (get default parameters and set frame duration)</span>
+pax = spk_autocalibration(<span class="string">'par'</span>);
+pax.dt = dt;
+<span class="comment">% (set limits for A and tau)</span>
+pax.amin = amin;
+pax.amax = amax;
+pax.taumin = taumin;
+pax.taumax = taumax;
+<span class="comment">% (set saturation parameter)</span>
+pax.saturation = 0.1;
+<span class="comment">% (give real values to the algorithm for display purposes - they obviously won't be used in the estimation!)</span>
+pax.realspikes = spikes;
+pax.reala = a;
+pax.realtau = tau;
+<span class="comment">% (when running MLspike from spk_autocalibratio, do not display graph summary)</span>
+pax.mlspikepar.dographsummary = false;
+
+<span class="comment">% perform auto-calibration</span>
+[tauest aest sigmaest] = spk_autocalibration(calcium,pax)
+</pre><pre class="codeoutput">estimated sigma: 0.029
+detect events: no nonlinearity here!
+sub-select events
+estimate tau - no nonlinearity here!
+line was modified since gcamp6s estimations!
+histogram and assign number of spikes to events
+re-estimate A and tau
+
+tauest =
+
+    0.6603
+
+
+aest =
+
+    0.0789
+
+
+sigmaest =
+
+    0.0285
+
+</pre><img vspace="5" hspace="5" src="spk_demo_04.png" alt=""> <p>The above graphs illustrate some steps of the performed autocalibration. As can be seen, estimated values for A and tau are pretty close to the real values used for the simulation. The estimated value for sigma is generally lower that the original sigma: this is normal, as the MLspike generally performs best when it uses a value for sigma slightly lower than the real one (using the real one tends to generate more misses).</p><h2>Spike estimation (using autocalibrated parameters)<a name="8"></a></h2><p>After this autocalibration we can apply the MLspike algorithm by using the autocalibrated parameters.</p><pre class="codeinput"><span class="comment">% parameters</span>
+par = tps_mlspikes(<span class="string">'par'</span>);
+par.dt = dt;
+<span class="comment">% (use autocalibrated parameters)</span>
+par.a = aest;
+par.tau = tauest;
+par.finetune.sigma = sigmaest;
+<span class="comment">% (the OGB saturation and drift parameters are fixed)</span>
+par.saturation = 0.1;
+par.drift.parameter = .01;
+<span class="comment">% (do not display graph summary)</span>
+par.dographsummary = false;
+
+<span class="comment">% spike estimation</span>
+[spikest fit drift] = spk_est(calcium,par);
+
+<span class="comment">% display</span>
+figure(2)
+spk_display(dt,{spikes spikest},{calcium fit drift})
+set(2,<span class="string">'numbertitle'</span>,<span class="string">'off'</span>,<span class="string">'name'</span>,<span class="string">'Auto-calibration + MLspike'</span>)
+</pre><pre class="codeoutput">tps_mlspike 6/6
+</pre><img vspace="5" hspace="5" src="spk_demo_05.png" alt=""> <p>Spikes estimated in such a way now match the original spikes with a lower error rate.</p><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Autocalibration demo
+% This script demonstrates on simulated data how to use the MLspike and
+% autocalibration algorithms. To see how to run the algorithms, go directly
+% to section 'Spike estimation'. 
+
+%% Generate spikes
+% We first generate some simulated data. Spike trains are generated using
+% spk_gentrain function (the data consists of 6 trials of 30s).
+%
+% Note the usefull function spk_display to display both spikes and calcium
+% time courses.
+
+% parameters
+ntrial = 6;
+T = 30;
+rate = 1;
+
+% generate spikes
+spikes = spk_gentrain(rate,T,'bursty','repeat',ntrial);
+
+% display
+figure(1)
+spk_display([],spikes,[])
+
+%% Random A and tau, and random level of noise
+% We draw randomly the parameters governing the calcium dynamics A (DF/F
+% amplitude for one spike) and tau (decay time constant), as well as the
+% level of noise in the data, sigma.
+
+amin = .04;
+amax = .1;
+a = amin * exp(rand(1)*log(amax/amin)) % log-uniform distribution 
+
+taumin = .4;
+taumax = 1.6;
+tau = taumin * exp(rand(1)*log(taumax/taumin))
+
+sigmamin = .005;
+sigmamax = .05;
+sigma = sigmamin * exp(rand(1)*log(sigmamax/sigmamin))
+
+%% Generate calcium
+% We generate calcium signals corresponding to the above spike trains using
+% these parameters. Note that some additional parameters (OGB dye
+% saturation and drift parameter) are fixed.
+
+% parameters
+dt = .02; % 50Hz acquisition
+pcal = spk_calcium('par');
+pcal.dt = dt;
+pcal.a = a;
+pcal.tau = tau;
+pcal.saturation = .1; % saturation level is fixed
+pcal.sigma = sigma; % noise level
+pcal.drift.parameter = [5 .015]; % drift level (#harmonics and amplitude of them)
+
+% generate calcium
+calcium = spk_calcium(spikes,pcal);
+
+% display
+figure(1)
+spk_display(dt,spikes,calcium)
+drawnow
+
+%% Spike estimation (using naive parameters)
+% We first apply the MLspike algorithm using some fixed parameters.
+% To run the algorithm on other data, set variable 'calcium' as a vector
+% time courses of the calcium signal if there is only one trial, or to a cell
+% array of such time courses if there are many trials.
+
+% parameters
+% (get the default parameters)
+par = tps_mlspikes('par');
+% (indicate the frame duration of the data)
+par.dt = dt;
+% (set physiological parameters)
+par.a = 0.07; % DF/F for one spike
+par.tau = 1; % decay time constant (second)
+par.saturation = 0.1; % OGB dye saturation
+% (set noise parameters)
+par.finetune.sigma = .02; % a priori level of noise (if par.finetune.sigma
+                          % is left empty, MLspike has a low-level routine 
+                          % to try estimating it from the data
+par.drift.parameter = .01; % if par.drift parameter is not set, the 
+                           % algorithm assumes that the baseline remains
+                           % flat; it is also possible to tell the
+                           % algorithm the value of the baseline by setting
+                           % par.F0
+% (do not display graph summary)
+par.dographsummary = false;
+
+% spike estimation
+[spikest fit drift] = spk_est(calcium,par);
+
+% display
+figure(1)
+spk_display(dt,{spikes spikest},{calcium fit drift})
+set(1,'numbertitle','off','name','MLspike alone')
+
+%%
+% The above graphs compare spikes estimated using autocalibration followed
+% by MLspike (in black) with the original spikes (in red), as well as the
+% estimated drift (dashed black) and fit to data. Because the parameters A,
+% tau and sigma used for the estimation might not be appropriate, the
+% estimation might not be very successful.
+
+
+%% Auto-calibration
+% Now we want to estimate the original spikes from the calcium signals
+% rather than using fixed parameter.
+% First we run the autocalibration algorithm to attempt estimating, from
+% the calcium signals directly, the values of parameters A, tau and sigma.
+
+% parameters
+% (get default parameters and set frame duration)
+pax = spk_autocalibration('par');
+pax.dt = dt;
+% (set limits for A and tau)
+pax.amin = amin;
+pax.amax = amax;
+pax.taumin = taumin;
+pax.taumax = taumax;
+% (set saturation parameter)
+pax.saturation = 0.1;
+% (give real values to the algorithm for display purposes - they obviously won't be used in the estimation!)
+pax.realspikes = spikes;
+pax.reala = a;
+pax.realtau = tau;
+% (when running MLspike from spk_autocalibratio, do not display graph summary)
+pax.mlspikepar.dographsummary = false;
+
+% perform auto-calibration
+[tauest aest sigmaest] = spk_autocalibration(calcium,pax)
+
+%%
+% The above graphs illustrate some steps of the performed autocalibration.
+% As can be seen, estimated values for A and tau are pretty close to the
+% real values used for the simulation. 
+% The estimated value for sigma is generally lower that the original sigma:
+% this is normal, as the MLspike generally performs best when it uses a
+% value for sigma slightly lower than the real one (using the real one
+% tends to generate more misses).
+
+%% Spike estimation (using autocalibrated parameters)
+% After this autocalibration we can apply the MLspike algorithm by using
+% the autocalibrated parameters. 
+
+% parameters
+par = tps_mlspikes('par');
+par.dt = dt;
+% (use autocalibrated parameters)
+par.a = aest;
+par.tau = tauest;
+par.finetune.sigma = sigmaest;
+% (the OGB saturation and drift parameters are fixed)
+par.saturation = 0.1;
+par.drift.parameter = .01;
+% (do not display graph summary)
+par.dographsummary = false;
+
+% spike estimation
+[spikest fit drift] = spk_est(calcium,par);
+
+% display
+figure(2)
+spk_display(dt,{spikes spikest},{calcium fit drift})
+set(2,'numbertitle','off','name','Auto-calibration + MLspike')
+
+%% 
+% Spikes estimated in such a way now match the original spikes with a lower
+% error rate. 
+
+##### SOURCE END #####
+--></body></html>

@@ -1,4 +1,4 @@
-%% Autocalibration demo
+%% MLspike and autocalibration demo
 % This script demonstrates on simulated data how to use the MLspike and
 % autocalibration algorithms. To see how to run the algorithms, go directly
 % to section 'Spike estimation'. 

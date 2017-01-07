@@ -1,6 +1,6 @@
 
 
-%% FACTOR BOX
+%% Factor Box
 % This document illustrates qualitatively how the performance of MLspike
 % depends on various primary and secondary factors.
 % 
