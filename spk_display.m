@@ -25,6 +25,8 @@ function [stats hl] = spk_display(dt,spikes,calcium,varargin)
 %           marker sizes
 % - other options
 %           'displaymode',mode  different preset for font sizes, etc.
+%           'gridsize',[nrow ncol]  size of grid
+%           'ncol',ncol         number of columns
 %           'burstdelay',value  specify time length for grouping spikes
 %                               into a single number
 %           'calciumevents' of 'calciumeventsfull'
@@ -58,6 +60,12 @@ while k<length(varargin)
             case 'gridsize'
                 k = k+1;
                 gridsize = varargin{k};
+            case 'ncol'
+                k = k+1;
+                gridsize = [NaN varargin{k}];
+            case 'nrow'
+                k = k+1;
+                gridsize = [varargin{k} NaN];
             case {'color' 'linewidth' 'fullline'}
                 k = k+1;
                 lineoptions.(a) = varargin{k};
@@ -267,6 +275,7 @@ else
         else
             nrow = gridsize(1);
             ncol = gridsize(2);
+            if isnan(nrow), nrow = ceil(ngraph/ncol); elseif isnan(ncol), ncol = ceil(ngraph/nrow); end
             if nrow*ncol<ngraph, error 'more graphs than grid cells', end
         end
         
@@ -289,7 +298,7 @@ else
             for j=1:ncol
                 kgraph = kgraph+1;
                 if kgraph>ngraph, break, end
-                ha(kgraph) = axes('parent',hf,'pos',[A+(j-1)*ww+a B+(nrow-i)*hh+b w h]); %#ok<LAXES>
+                ha(kgraph) = axes('parent',hf,'pos',[A+(j-1)*ww+a B+(nrow-i)*hh+b w h]); 
                 doxlabel(kgraph) = (kgraph>ngraph-ncol);
                 doylabel(kgraph) = (j==1);
             end

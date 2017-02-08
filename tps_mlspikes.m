@@ -416,7 +416,14 @@ elseif ~dodrift
     [n Ffit par.F0 LL xest] = backward_fixbaseline(F,par);
 else
     if strcmp(par.display,'steps'), disp 'estimate drifting baseline', end
-    [n Ffit par.F0 LL xest] = backward_driftstate(F,par);
+    if nargout==1 && ~par.dographsummary
+        % not outputing state: this might save space, in particular in
+        % 'samples' mode
+        n = backward_driftstate(F,par); 
+        return
+    else
+        [n Ffit par.F0 LL xest] = backward_driftstate(F,par);
+    end
 end    
 
 % "Assemble" the drift
@@ -780,7 +787,7 @@ switch par.drift.effect
         if ~(F0>par.F0(1) && F0<par.F0(2))
             error 'additive drifts: calcium signals must be already normalized by F0'
         else
-            disp 'additive drifts: calcium signals supposed already normalized by F0'
+            %disp 'additive drifts: calcium signals supposed already normalized by F0'
         end
     case 'multiplicative'
         F0 = mean(par.F0);
@@ -897,7 +904,8 @@ else
     % interpolation and averaging at once; this matrix is obtained by first
     % replacing the continuous distribution by a fine-grain discrete
     % distribution
-    discretesteps = (-6:.05:6); % to be multiplied with sigmab
+    %discretesteps = (-6:.05:6); % to be multiplied with sigmab
+    discretesteps = (-5:.2:5); % to be multiplied with sigmab
     ndrift = length(discretesteps);
     pdrift = exp(-discretesteps.^2/2);
     pdrift = pdrift/sum(pdrift);
@@ -1114,18 +1122,23 @@ elseif dosample
 end
 
 % Forward collecting/sampling/smoothing step
-n = zeros(T,nsample);
-xest = zeros(T,2,nsample);
-if dosample, fn_progress('sampling',T), end
+if doproba
+    n = zeros(T,nsample,'single');
+else
+    n = zeros(T,nsample,'uint8');
+end
+doxest = (nargout>=2) || par.dographsummary;
+if doxest, xest = zeros(T,2,nsample,'single'); end
+if dosample && strcmp(par.display,'steps'), fn_progress('sampling',T), end
 for t=1:T
-    if dosample, fn_progress(t), end
+    if dosample && strcmp(par.display,'steps'), fn_progress(t), end
     if t==1
         if doMAP
             if par.drift.baselinestart
                 % impose that the initial calcium level is baseline
                 cidx = 1;
                 ystart = mean(y(1:ceil(0.1/par.dt))); % average over 100ms to get the start value
-                [dum bidx] = min(abs(ystart-xxmeasure(cidx,:))); %#ok<ASGLU>
+                [dum bidx] = min(abs(ystart-xxmeasure(cidx,:))); 
                 LL = lt(cidx,bidx);
             else
                 % LL is the minimum negative log likelihood
@@ -1133,25 +1146,29 @@ for t=1:T
                 [LL bidx] = min(LL,[],2);
                 cidx = cidx(bidx);
             end
-            xest(t,:) = [cc(cidx) bb(bidx)];
+            if doxest, xest(t,:) = [cc(cidx) bb(bidx)]; end
         elseif dosample
             % initiate samples
             LL = []; % would be quite useless to compute log likelihoods, isn't it?
             [cidx bidx] = logsample(lt,nsample);
-            xest(t,1,:) = cc(cidx);
-            xest(t,2,:) = bb(bidx);
+            if doxest
+                xest(t,1,:) = cc(cidx);
+                xest(t,2,:) = bb(bidx);
+            end
         elseif doproba
             LL = logsumexp(lt(:));
             pt = log2proba(lt);
-            xest(t,1) = sum(row(fn_mult(cc,pt)));
-            xest(t,2) = sum(row(fn_mult(bb,pt)));
+            if doxest
+                xest(t,1) = sum(row(fn_mult(cc,pt)));
+                xest(t,2) = sum(row(fn_mult(bb,pt)));
+            end
         end
     else
         if doMAP
             xest(t,2) = fn_coerce(xest(t-1,2) + D(cidx,bidx,t),baselineinterval);
             bidx = 1+round((xest(t,2)-bb(1))/db);
             n(t) = N(cidx,bidx,t);
-            xest(t,1) = min(xest(t-1,1)*decay + n(t),cmax);
+            if doxest, xest(t,1) = min(xest(t-1,1)*decay + double(n(t)),cmax); end
             cidx = 1+round(xest(t,1)/dc);
         elseif dosample
             % draw calcium and baseline evolutions at once
@@ -1159,16 +1176,28 @@ for t=1:T
             % -> use a for loop
             nspike = column(0:nspikmax);                    % putative number of spikes
             Lt = L(:,:,t);                                  % -log p(yt,..,yT|xt) [size nc*nb]
-            for ksample = 1:nsample
-                ct = xest(t-1,1,ksample)*decay + nspike;    % corresponding putative calcium values
-                bt = xest(t-1,2,ksample) + discretesteps*sigmab;        % putative baseline values
-                ltk0 = interpn(Lt,1+ct/dc,1+(bt-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikmax)*nb]
-                ltk = lspike_drift + ltk0;                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikmax)*ndrift]
-                [cidx bidx] = logsample(ltk);
-                n(t,ksample) = cidx-1;
-                xest(t,1,ksample) = ct(cidx);
-                xest(t,2,ksample) = bt(bidx);
+            ct = fn_add(xest(t-1,1,:)*decay, nspike);    % corresponding putative calcium values
+            bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);        % putative baseline values
+            ct1 = repmat(ct,[1 ndrift 1]);
+            bt1 = repmat(bt,[1+nspikmax 1 1]);
+            ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikmax)*nb]
+            ltk = fn_add(lspike_drift, ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikmax)*ndrift]
+            [cidx bidx] = logsample(ltk,'2D');
+            n(t,:) = cidx-1;
+            if doxest
+                xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
+                xest(t,2,:) = bt(sub2ind([ndrift nsample],bidx,1:nsample));
             end
+            %             for ksample = 1:nsample
+            %                 ct = xest(t-1,1,ksample)*decay + nspike;    % corresponding putative calcium values
+            %                 bt = xest(t-1,2,ksample) + discretesteps*sigmab;        % putative baseline values
+            %                 ltk0 = interpn(Lt,1+ct/dc,1+(bt-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikmax)*nb]
+            %                 ltk = lspike_drift + ltk0;                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikmax)*ndrift]
+            %                 [cidx bidx] = logsample(ltk);
+            %                 n(t,ksample) = cidx-1;
+            %                 xest(t,1,ksample) = ct(cidx);
+            %                 xest(t,2,ksample) = bt(bidx);
+            %             end
         elseif doproba
             % time update
             % for the moment:
@@ -1187,14 +1216,19 @@ for t=1:T
             pty = exp(min(lty(:))-lty);             % ~ p(xt|y)
             pty = pty/sum(pty(:));
             n(t) = sum(row(nt.*pty));               % E(nt|y)
-            xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
-            xest(t,2) = sum(row(fn_mult(bb,pty)));  % E(bt|y)
+            if doxest
+                xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
+                xest(t,2) = sum(row(fn_mult(bb,pty)));  % E(bt|y)
+            end
             
             % measure update
             lt = lt + (lmeasure+(y(t)-xxmeasure).^2/(2*sigmay^2));
         end
     end
 end
+
+% We can stop here if we want only spikes
+if ~doxest, return, end
 
 % Graph summary
 if par.dographsummary
@@ -1287,7 +1321,7 @@ switch par.drift.effect
         if ~(F0>par.F0(1) && F0<par.F0(2))
             error 'additive drifts: calcium signals must be already normalized by F0'
         else
-            disp 'additive drifts: calcium signals supposed already normalized by F0'
+            %disp 'additive drifts: calcium signals supposed already normalized by F0'
         end
     case 'multiplicative'
         F0 = mean(par.F0);
@@ -1814,10 +1848,24 @@ if isnumeric(nsample_flag)
             [ii jj] = ind2sub(size(l),idx);
             varargout = {ii jj};
     end
-elseif strcmp(nsample_flag,'rows')
-    % each row is a different distribution
-    p = log2proba(l,2);
-    nsample = size(l,1);
-    idx = 1 + sum(bsxfun(@gt,rand(nsample,1),cumsum(p,2)),2);
-    varargout = {idx};
+else
+    switch nsample_flag
+        case 'rows'
+            % each row is a different distribution
+            p = log2proba(l,2);
+            nsample = size(l,1);
+            idx = 1 + sum(bsxfun(@gt,rand(nsample,1),cumsum(p,2)),2);
+            varargout = {idx};
+        case '2D'
+            % each 2D array is a different distribution
+            [nx ny nsample] = size(l);
+            nstate = nx*ny;
+            l = reshape(l,[nstate nsample]);
+            p = log2proba(l,1);
+            random = rand(1,nsample);
+            pcum = cumsum(p,1);
+            idx = 1 + sum(bsxfun(@gt,random,pcum),1);
+            [ii jj] = ind2sub([nx ny],idx);
+            varargout = {ii jj};
+    end
 end
