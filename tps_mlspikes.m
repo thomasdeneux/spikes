@@ -635,6 +635,7 @@ if doproba
     cc3 = (cc-3)/decay;
     % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
     M0 = interp1(cc,eye(nc),cc0,interpmode,0);
+    M0(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
     M1 = interp1(cc,eye(nc),cc1,interpmode,0);
     M2 = interp1(cc,eye(nc),cc2,interpmode,0);
     M3 = interp1(cc,eye(nc),cc3,interpmode,0);
@@ -1103,6 +1104,7 @@ if doproba
     cc3 = (cc-3)/decay;
     % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
     M0 = interp1(cc,eye(nc),cc0,interpmode,0);
+    M0(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
     M1 = interp1(cc,eye(nc),cc1,interpmode,0);
     M2 = interp1(cc,eye(nc),cc2,interpmode,0);
     M3 = interp1(cc,eye(nc),cc3,interpmode,0);
@@ -1162,6 +1164,10 @@ for t=1:T
                 xest(t,1) = sum(row(fn_mult(cc,pt)));
                 xest(t,2) = sum(row(fn_mult(bb,pt)));
             end
+            
+            % now lt represents -log p(xt|y1,..,yt), so we use the time
+            % zero prior and perform a single measure update
+            lt = lcalcium + (lmeasure+(y(t)-xxmeasure).^2/(2*sigmay^2));
         end
     else
         if doMAP
@@ -1174,15 +1180,15 @@ for t=1:T
             % draw calcium and baseline evolutions at once
             % too difficult this time to do all particles at once 
             % -> use a for loop
-            nspike = column(0:nspikmax);                    % putative number of spikes
-            Lt = L(:,:,t);                                  % -log p(yt,..,yT|xt) [size nc*nb]
-            ct = fn_add(xest(t-1,1,:)*decay, nspike);    % corresponding putative calcium values
-            bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);        % putative baseline values
-            ct1 = repmat(ct,[1 ndrift 1]);
-            bt1 = repmat(bt,[1+nspikmax 1 1]);
-            ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikmax)*nb]
-            ltk = fn_add(lspike_drift, ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikmax)*ndrift]
-            [cidx bidx] = logsample(ltk,'2D');
+            nspike = column(0:nspikmax);                        % putative number of spikes
+            ct = fn_add(xest(t-1,1,:)*decay, nspike);           % corresponding putative calcium values [(1+nspikmax)*1*nsample]
+            ct1 = repmat(ct,[1 ndrift 1]);                      % idem [(1+nspikmax)*ndrift*nsample]
+            bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);   % putative baseline values [1*ndrift*nsample]
+            bt1 = repmat(bt,[1+nspikmax 1 1]);                  % idem [(1+nspikmax)*ndrift*nsample]
+            Lt = L(:,:,t);                                      % -log p(yt,..,yT|xt) [nc*nb]
+            ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|xt)   [(1+nspikmax)*ndrift*nsample]
+            ltk = fn_add(lspike_drift, ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikmax)*ndrift*nsample]
+            [cidx bidx] = logsample(ltk,'2D');                  % [nsample]
             n(t,:) = cidx-1;
             if doxest
                 xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
@@ -1199,30 +1205,63 @@ for t=1:T
             %                 xest(t,2,ksample) = bt(bidx);
             %             end
         elseif doproba
-            % time update
-            % for the moment:
-            % . lt is -log p(x(t-1)|y1,..,y(t-1))
-            % . L(:,:,t) is -log p(yt,..,yT|xt)
-            % complicate ways of computing are needed to avoid numerical
-            % errors
-            lt1 = lt;               % -log p(x(t-1)|y1,..,y(t-1))
-            lmin = min(lt1(:));
-            pt1 = exp(lmin-lt1);    % ~ p(x(t-1)|y1,..,y(t-1))
-            pt = MS*pt1*BB;         % ~ p(xt|y1,..,y(t-1))
-            nt = (NS*pt1*BB)./pt; nt(pt==0) = 0;   % E(nt|xt,b(t-1),y1,..,y(t-1))
-            lt = lmin-log(pt);      % -log p(xt|y1,..,y(t-1))
-            lty = lt + L(:,:,t);    % ~ -log p(xt|y)
-            L(:,:,t) = lty;
-            pty = exp(min(lty(:))-lty);             % ~ p(xt|y)
-            pty = pty/sum(pty(:));
-            n(t) = sum(row(nt.*pty));               % E(nt|y)
-            if doxest
-                xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
-                xest(t,2) = sum(row(fn_mult(bb,pty)));  % E(bt|y)
+            if eval('true')
+                % Below is the implementation described in the paper.
+                % But this does not seem stable enough, in particular,
+                % because it combines the past and future of each t, 
+                % the result can be inconsistant (due to numerical
+                % approximations probably) between time t-1 and time t.
+                % Furthermore, the initialization for this computation is
+                % incorrect, as it should only take y1 into account.
+                
+                % time update
+                % . lt represents information from the past only, it will be
+                %   updated from -log p(x(t-1)|y1,..,y(t-1)) to -log p(xt|y1,..,yt)
+                % . L(:,:,t) is -log p(yt,..,yT|xt), i.e. combines information
+                %   from past and future
+                % note that interpolations must occur in the 'proba' rather
+                % than 'log proba' to be accurate
+                
+                % lt time update
+                lt1 = lt;               % -log p(x(t-1)|y1,..,y(t-1))
+                lmin = min(lt1(:));
+                pt1 = exp(lmin-lt1);    % ~ p(x(t-1)|y1,..,y(t-1))
+                pt = MS*pt1*BB;         % ~ p(xt|y1,..,y(t-1))
+                lt = lmin-log(pt);      % -log p(xt|y1,..,y(t-1))
+                
+                % update L(:,:,t), i.e. combine lt and previous L(:,:,t)
+                lty = lt + L(:,:,t);    % ~ -log p(xt|y)
+                L(:,:,t) = lty;
+                pty = log2proba(lty);   % ~ p(xt|y)
+                
+                % expectancy for number of spikes
+                nt = (NS*pt1*BB)./pt; nt(pt==0) = 0;    % E(nt|xt,y1,..,y(t-1))
+                n(t) = sum(row(nt.*pty));               % E(nt|y)
+                if doxest
+                    xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
+                    xest(t,2) = sum(row(fn_mult(bb,pty)));  % E(bt|y)
+                end
+                
+                % lt measure update
+                lt = lt + (lmeasure+(y(t)-xxmeasure).^2/(2*sigmay^2));
+            else
+                
+                % Well... an alternative that would produce results more
+                % similar to the 'samples' mode is too difficult to write,
+                % in particular because it might involve square matrices
+                % with side the total number of states
+                
+                error 'not implemented'
+                %                 lt1 = lt;               % -log p(x(t-1)|y1,..,y(t-1))
+                %                 lmin = min(lt1(:));
+                %                 pt1 = exp(lmin-lt1);    % p(x(t-1)|y1,..,y(t-1))
+                %
+                %                 ltfuture = L(:,:,t);    % -log p(xt|yt,..,yT)
+                %                 ptfuture = exp(min(ltfuture(:))-ltfuture);
+                %                 ptfuture = ptfuture/sum(ptfuture(:));   % p(xt|yt,..,yT)
+                
+                
             end
-            
-            % measure update
-            lt = lt + (lmeasure+(y(t)-xxmeasure).^2/(2*sigmay^2));
         end
     end
 end
