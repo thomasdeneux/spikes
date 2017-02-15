@@ -905,11 +905,19 @@ else
     % interpolation and averaging at once; this matrix is obtained by first
     % replacing the continuous distribution by a fine-grain discrete
     % distribution
-    %discretesteps = (-6:.05:6); % to be multiplied with sigmab
-    discretesteps = (-5:.2:5); % to be multiplied with sigmab
-    ndrift = length(discretesteps);
-    pdrift = exp(-discretesteps.^2/2);
+    
+    % define bins: central bins have all equal probabilities, while some
+    % extreme bins with lower probabilities are added
+    sides = [-Inf -100 -50 -30 -20 -10 -7 -5 -3 norminv(.04:.04:.96) 3 5 7 10 20 30 50 100 Inf];
+    ndrift = length(sides)-1;
+    ndhalf = (ndrift-1)/2;
+    pdrift = diff(normcdf(sides)); % probability of each bin
+    pdrift(ndhalf+2:end) = fliplr(pdrift(1:ndhalf));  % correct numerical error for the last one
+    discretesteps = norminv(cumsum(pdrift)-pdrift/2); % representative element of each bin has central probability
+    discretesteps(ndhalf+2:end) = -fliplr(discretesteps(1:ndhalf));   % correct numerical error for the last one   
     pdrift = pdrift/sum(pdrift);
+        
+    % matrix for baseline time update
     bb1 = fn_add((1:nb)',discretesteps*(sigmab/db));
     BB = interp1(eye(nb),bb1(:),'linear',NaN); % (nb*ndrift)*nb
     BB = reshape(BB,[nb ndrift nb]);
@@ -918,6 +926,11 @@ else
     BB(isnan(BB)) = 0;
     BB = squeeze(sum(BB.*pdriftc,2)); % nb*nb  
     BB = BB'; % will operate on columns
+    
+    % for the forward step only
+    ldrift = -log(pdrift);
+    ldrift([1 end]) = 100^2/2+log(50);  % an approximative value, instead of Inf
+    ldrift([2 end-1]) = 50^2/2+log(50); % an approximative value, instead of Inf
 end
 
 % Precomputation for the measure after saturation/nonlinearity
@@ -1115,11 +1128,6 @@ if doproba
     % f1(c) = sum_n n p(n) f((c-n)/decay)
     NS = pspike(2)*M1 + 2*pspike(3)*M2 + 3*pspike(4)*M3;
 elseif dosample
-    %discretesteps = [-6 -5:.5:-2.5 -2:.1:-.1 -.05 0 .05 .1:.1:2 2.5:.5:5 6]; % try a limited number of drifts!
-    %discretesteps = -6:.05:6;
-    %pdrift = exp(-discretesteps.^2/2);
-    %pdrift = pdrift/sum(pdrift);
-    ldrift = -log(pdrift);
     lspike_drift = fn_add(column(lspike),row(ldrift));
 end
 
@@ -1129,7 +1137,7 @@ if doproba
 else
     n = zeros(T,nsample,'uint8');
 end
-doxest = (nargout>=2) || par.dographsummary;
+doxest = ~doproba || (nargout>=2) || par.dographsummary;
 if doxest, xest = zeros(T,2,nsample,'single'); end
 if dosample && strcmp(par.display,'steps'), fn_progress('sampling',T), end
 for t=1:T
@@ -1193,6 +1201,11 @@ for t=1:T
             if doxest
                 xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
                 xest(t,2,:) = bt(sub2ind([ndrift nsample],bidx,1:nsample));
+            badsample = all(all(isinf(ltk))); % some samples ran out uncharted low-proba territory: put them back in the max-proba position
+            if any(badsample)
+                xest(t,1,badsample) = 0;
+                [~, bidx] = min(Lt(1,:));
+                xest(t,2,badsample) = mygather(bb(bidx));
             end
             %             for ksample = 1:nsample
             %                 ct = xest(t-1,1,ksample)*decay + nspike;    % corresponding putative calcium values
@@ -1845,6 +1858,19 @@ Y1e = W*X1e;
 Y = fn_subtract(m,log(Y1e));
 Y(:,isinf(m)) = Inf;
 
+% % We want to avoid Inf in Y (i.e. 0 in Y1e)
+% Yisinf = (Y==Inf);
+% while any(Yisinf(:))
+%     m = m + 700;
+%     X1 = fn_subtract(X,m);
+%     X1 = max(X1,-700);
+%     X1e = exp(-X1);
+%     Y1e = W*X1e;
+%     Y1 = fn_subtract(m,log(Y1e));
+%     Y(Yisinf) = Y1(Yisinf);
+%     Yisinf = (Y==Inf);
+% end
+
 %---
 function Y = logmultexp_column(W,X)
 % function Y = logmultexp_column(W,X)
@@ -1866,6 +1892,19 @@ Y1e = X1e*W;
 % log(exp(X)*W) = m + log(exp(X1)*W)
 Y = fn_subtract(m,log(Y1e));
 Y(isinf(m),:) = Inf;
+
+% % We want to avoid Inf in Y (i.e. 0 in Y1e)
+% Yisinf = (Y==Inf);
+% while any(Yisinf(:))
+%     m = m + 700;
+%     X1 = fn_subtract(X,m);
+%     X1 = max(X1,-700);
+%     X1e = exp(-X1);
+%     Y1e = X1e*W;
+%     Y1 = fn_subtract(m,log(Y1e));
+%     Y(Yisinf) = Y1(Yisinf);
+%     Yisinf = (Y==Inf);
+% end
 
 %---
 function varargout = logsample(l,nsample_flag)
