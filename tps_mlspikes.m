@@ -208,6 +208,7 @@ par.algo.interpmode = 'spline'; % 'linear' or 'spline'; choosing one or
 % but not always (in particular when grid is too coarse 'linear' might be
 % better?)
 par.algo.testflag = 0; % use this for some debugging
+par.algo.dogpu = false;
 spec.algo = struct( ...
     'return__a__unique__spike__train__or__probabilities__or__samples', 'label', ...
     'estimate',     {'MAP' 'proba' 'samples'}, ...
@@ -225,6 +226,8 @@ spec.algo = struct( ...
     'np',   'double', ...
     'nsample',      'double', ...
     'interpmode',   {{'linear' 'spline'}}, ...
+    'using__GPU__implementation', 'label', ...
+    'dogpu','logical', ...
     'unused__parameters', 'label', ...
     'testflag',     'logical' ...
     );
@@ -814,6 +817,17 @@ dosample = ismember(estimate,{'sample' 'samples'});
 interpmode = fn_switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
 nsample = fn_switch(dosample,par.algo.nsample,1);
 
+% GPU implementation?
+dogpu = par.algo.dogpu;
+% (function for gpuArray<->array conversion only if requested)
+if dogpu
+    mygpu = @gpuArray;
+    mygather = @gather;
+else
+    mygpu = @(x)x;
+    mygather = @(x)x;
+end
+
 % Special: non-integer spikes
 nonintegerspike = par.special.nonintegerspike_minamp;
 if nonintegerspike && ~doMAP, error 'noninteger spike are available only for MAP estimations', end
@@ -1156,15 +1170,13 @@ for t=1:T
                 [LL bidx] = min(LL,[],2);
                 cidx = cidx(bidx);
             end
-            if doxest, xest(t,:) = [cc(cidx) bb(bidx)]; end
+            xest(t,:) = [cc(cidx) bb(bidx)];
         elseif dosample
             % initiate samples
             LL = []; % would be quite useless to compute log likelihoods, isn't it?
             [cidx bidx] = logsample(lt,nsample);
-            if doxest
-                xest(t,1,:) = cc(cidx);
-                xest(t,2,:) = bb(bidx);
-            end
+            xest(t,1,:) = cc(cidx);
+            xest(t,2,:) = bb(bidx);
         elseif doproba
             LL = logsumexp(lt(:));
             pt = log2proba(lt);
@@ -1182,7 +1194,7 @@ for t=1:T
             xest(t,2) = fn_coerce(xest(t-1,2) + D(cidx,bidx,t),baselineinterval);
             bidx = 1+round((xest(t,2)-bb(1))/db);
             n(t) = N(cidx,bidx,t);
-            if doxest, xest(t,1) = min(xest(t-1,1)*decay + double(n(t)),cmax); end
+            xest(t,1) = min(xest(t-1,1)*decay + double(n(t)),cmax);
             cidx = 1+round(xest(t,1)/dc);
         elseif dosample
             % draw calcium and baseline evolutions at once
@@ -1198,14 +1210,13 @@ for t=1:T
             ltk = fn_add(lspike_drift, ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikmax)*ndrift*nsample]
             [cidx bidx] = logsample(ltk,'2D');                  % [nsample]
             n(t,:) = cidx-1;
-            if doxest
-                xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
-                xest(t,2,:) = bt(sub2ind([ndrift nsample],bidx,1:nsample));
+            xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
+            xest(t,2,:) = bt(sub2ind([ndrift nsample],bidx,1:nsample));
             badsample = all(all(isinf(ltk))); % some samples ran out uncharted low-proba territory: put them back in the max-proba position
             if any(badsample)
                 xest(t,1,badsample) = 0;
                 [~, bidx] = min(Lt(1,:));
-                xest(t,2,badsample) = mygather(bb(bidx));
+                xest(t,2,badsample) = bb(bidx);
             end
             %             for ksample = 1:nsample
             %                 ct = xest(t-1,1,ksample)*decay + nspike;    % corresponding putative calcium values
@@ -1239,7 +1250,8 @@ for t=1:T
                 lt1 = lt;               % -log p(x(t-1)|y1,..,y(t-1))
                 lmin = min(lt1(:));
                 pt1 = exp(lmin-lt1);    % ~ p(x(t-1)|y1,..,y(t-1))
-                pt = MS*pt1*BB;         % ~ p(xt|y1,..,y(t-1))
+                pt1b = pt1*BB;
+                pt = MS*pt1b;% ~ p(xt|y1,..,y(t-1))
                 lt = lmin-log(pt);      % -log p(xt|y1,..,y(t-1))
                 
                 % update L(:,:,t), i.e. combine lt and previous L(:,:,t)
@@ -1248,7 +1260,7 @@ for t=1:T
                 pty = log2proba(lty);   % ~ p(xt|y)
                 
                 % expectancy for number of spikes
-                nt = (NS*pt1*BB)./pt; nt(pt==0) = 0;    % E(nt|xt,y1,..,y(t-1))
+                nt = (NS*pt1b)./pt; nt(pt==0) = 0;      % E(nt|xt,y1,..,y(t-1))
                 n(t) = sum(row(nt.*pty));               % E(nt|y)
                 if doxest
                     xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
@@ -1947,3 +1959,41 @@ else
             varargout = {ii jj};
     end
 end
+
+%---
+function x = gpuconvert(x)
+
+if isnumeric(x)
+    x = gpuArray(x);
+elseif isstruct(x)
+    if ~isscalar(x), error 'not handled yet', end
+    F = fieldnames(x);
+    for i=1:length(F)
+        f = F{i};
+        x.(f) = gpuconvert(x.(f));
+    end
+elseif iscell(x)
+    for i=1:numel(x)
+        x{i} = gpuconvert(x{i});
+    end
+elseif islogical(x) && ~isscalar(x) && fn_dodebug
+    disp 'convert or not convert?'
+    keyboard
+elseif islogical(x) || ischar(x)
+    % do not convert
+else
+    error 'class not handled'
+end
+        
+%---
+function x = gpuConvertPar(x)
+
+if ~isstruct(x) || ~isscalar(x), error 'argument must be a scalar parameters structure', end
+F = fieldnames(x);
+for i=1:length(F)
+    f = F{i};
+    if strcmp(f,'algo'), continue, end % numbers in par.algo define array sizes and are not supposed to be sent to the GPU
+    x.(f) = gpuconvert(x.(f));
+end
+
+
