@@ -486,16 +486,32 @@ for k=1:ngraph
             text('parent',ha(k),'string',str,'units','normalized','pos',[.05 .95]);
         end
     elseif dorate
+        ratefact = 3; % a 'spike probability 1' mark will be as high as 3 spikes
+        
         if length(spikesk)~=2, error 'rate display only with 2 spike trains', end
         idx = (spikesk{2}>1e-3);
         y0 = yspike(2)-spikeheight/2;
         if any(idx)
             curhold = ishold(ha(k));
             hold(ha(k),'on')
-            stem(tt(idx),y0+spikesk{2}(idx)*spikeheight,'parent',ha(k), ...
+            stem(tt(idx),y0+ratefact*spikesk{2}(idx)*spikeheight,'parent',ha(k), ...
                 'color',spikecol(2),'marker','none','basevalue',y0,'showbaseline','off');
             if ~curhold, hold(ha(k),'off'), end
         end
+        
+        % superimpose the ground truth
+        if length(spikesk)==2
+            % spike count
+            spkcount = fn_timevector(spikesk{1},tt,'count');
+            % smooth
+            spkcount = fn_filt(spkcount,.2/dt(k),'l');
+            % scale
+            spkcount = ratefact*spkcount;
+            % display
+            spkcount(spkcount<1e-3) = NaN;
+            line(tt,y0+spkcount*spikeheight,'parent',ha(k),'color',spikecol(1))
+        end
+        
     end
     
     % auto-detect burst and display number of spikes per burst

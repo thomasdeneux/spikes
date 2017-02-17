@@ -1143,6 +1143,7 @@ if doproba
     NS = pspike(2)*M1 + 2*pspike(3)*M2 + 3*pspike(4)*M3;
 elseif dosample
     lspike_drift = fn_add(column(lspike),row(ldrift));
+    lspike_driftG = mygpu(lspike_drift);
 end
 
 % Forward collecting/sampling/smoothing step
@@ -1206,8 +1207,10 @@ for t=1:T
             bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);   % putative baseline values [1*ndrift*nsample]
             bt1 = repmat(bt,[1+nspikmax 1 1]);                  % idem [(1+nspikmax)*ndrift*nsample]
             Lt = L(:,:,t);                                      % -log p(yt,..,yT|xt) [nc*nb]
+            Lt = mygpu(Lt); % the computation in the next line seems to be the only one where GPU is profitable!
             ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|xt)   [(1+nspikmax)*ndrift*nsample]
-            ltk = fn_add(lspike_drift, ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikmax)*ndrift*nsample]
+            ltk0 = mygather(ltk0);
+            ltk = bsxfun(@plus,lspike_drift,ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikmax)*ndrift*nsample]
             [cidx bidx] = logsample(ltk,'2D');                  % [nsample]
             n(t,:) = cidx-1;
             xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
@@ -1790,14 +1793,14 @@ if isempty(dim)
 else
     % proba in dimension dim
     % e.g. if dim=2, each row is a probability distribution
-    l = fn_subtract(l, min(l,[],dim));
+    l = bsxfun(@minus,l,min(l,[],dim));
 end
 p = exp(-l);
 p(isnan(p)) = 0;
 if isempty(dim)
     p = p/sum(p(:));
 else
-    p = fn_div(p,sum(p,dim));
+    p = bsxfun(@rdivide,p,sum(p,dim));
 end
 
 %---
@@ -1919,17 +1922,19 @@ Y(isinf(m),:) = Inf;
 % end
 
 %---
-function varargout = logsample(l,nsample_flag)
+function varargout = logsample(l,nsample_flag,dogpu)
 % function [ii jj ...] = logsample(l,nsample|flag)
 %---
 % draw samples from the negative log probability distribution
 
-if nargin<2, nsample_flag=1; end
+if nargin<2, nsample_flag = 1; end
+if nargin<3, dogpu = false; end
 
 if isnumeric(nsample_flag)
     p = log2proba(l);
     nsample = nsample_flag;
     idx = 1 + sum(bsxfun(@gt,rand(1,nsample),cumsum(p(:))));
+    if dogpu, idx = gather(idx); end
     switch nargout
         case 1
             if ~isvector(l), error 'two outputs when l is a matrix', end
@@ -1945,6 +1950,7 @@ else
             p = log2proba(l,2);
             nsample = size(l,1);
             idx = 1 + sum(bsxfun(@gt,rand(nsample,1),cumsum(p,2)),2);
+            if dogpu, idx = gather(idx); end
             varargout = {idx};
         case '2D'
             % each 2D array is a different distribution
@@ -1955,6 +1961,7 @@ else
             random = rand(1,nsample);
             pcum = cumsum(p,1);
             idx = 1 + sum(bsxfun(@gt,random,pcum),1);
+            if dogpu, idx = gather(idx); end
             [ii jj] = ind2sub([nx ny],idx);
             varargout = {ii jj};
     end
