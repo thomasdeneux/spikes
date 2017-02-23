@@ -441,8 +441,7 @@ for k=1:ngraph
     end
 
     % display spikes
-    for i=1:length(spikesk)
-        if dorate && i>1, break, end
+    for i=1:(length(spikesk)-dorate)
         fn_spikedisplay(spikesk{i},yspike(i),spikeheight,'parent',ha(k), ...
             'color',spikecol(i),'linewidth',spkwidth)
     end
@@ -488,14 +487,14 @@ for k=1:ngraph
     elseif dorate
         ratefact = 3; % a 'spike probability 1' mark will be as high as 3 spikes
         
-        if length(spikesk)~=2, error 'rate display only with 2 spike trains', end
-        idx = (spikesk{2}>1e-3);
-        y0 = yspike(2)-spikeheight/2;
+        ksp = length(spikesk); if ksp>2, error 'there can be only 1 or 2 spike set', end
+        idx = (spikesk{ksp}>1e-3);
+        y0 = yspike(ksp)-spikeheight/2;
         if any(idx)
             curhold = ishold(ha(k));
             hold(ha(k),'on')
-            stem(tt(idx),y0+ratefact*spikesk{2}(idx)*spikeheight,'parent',ha(k), ...
-                'color',spikecol(2),'marker','none','basevalue',y0,'showbaseline','off');
+            stem(tt(idx),y0+ratefact*spikesk{ksp}(idx)*spikeheight,'parent',ha(k), ...
+                'color',spikecol(ksp),'marker','none','basevalue',y0,'showbaseline','off');
             if ~curhold, hold(ha(k),'off'), end
         end
         
@@ -516,10 +515,9 @@ for k=1:ngraph
     
     % auto-detect burst and display number of spikes per burst
     if isempty(burstdelay), burstdelay = .3; end
-    spk = spikesk{1};
-    nsp = fn_switch(dorate,1,length(spikesk));
+    nsp = length(spikesk)-dorate;
     dtext = 0; %fn_coordinates(ha(k),'b2a',[1 0],'vector'); dtext = 4*dtext(1);
-    for i=2:nsp, spk = union(spk,spikesk{i}); end
+    spk = zeros(1,0); for i=1:nsp, spk = union(spk,spikesk{i}); end
     if ~isempty(spk)
         delays = diff(spk);
         kburst = [1 1+find(delays>burstdelay)];

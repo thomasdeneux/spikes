@@ -104,8 +104,12 @@ if iscell(x)
         [out{:,k}] = tps_mlspikes(x{k},par(k)); 
     end
     varargout = num2cell(out,2);
-    if xiscell, icat = 3:min(4,nout); else icat = 1:nout; end
-    for i=icat, varargout{i} =  [varargout{i}{:}]; end
+    if nout>=3, varargout{3} = [varargout{3}{:}]; end
+    if nout>=4, varargout{4} = [varargout{4}{:}]; end
+    if ~xiscell
+        dim = fn_switch(isvector(varargin{1}),2,3);
+        for i=setdiff(1:nout,[3 4]), varargout{i} = cat(dim,varargout{i}{:}); end
+    end
     return
 end
 
@@ -1143,7 +1147,6 @@ if doproba
     NS = pspike(2)*M1 + 2*pspike(3)*M2 + 3*pspike(4)*M3;
 elseif dosample
     lspike_drift = fn_add(column(lspike),row(ldrift));
-    lspike_driftG = mygpu(lspike_drift);
 end
 
 % Forward collecting/sampling/smoothing step
