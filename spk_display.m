@@ -180,7 +180,7 @@ elseif ngraph==1
             for i=1:length(calcium), calcium(i) = calcium{i}(:); end
         end
         if ~isscalar(calcium)
-            calcium = {fn_map(@column,calcium,'array')};
+            calcium = {fn_map(@(x)single(x(:)),calcium,'array')};
         end
     else
         if isvector(calcium)
@@ -485,7 +485,7 @@ for k=1:ngraph
             text('parent',ha(k),'string',str,'units','normalized','pos',[.05 .95]);
         end
     elseif dorate
-        ratefact = 3; % a 'spike probability 1' mark will be as high as 3 spikes
+        ratefact = 1; % a 'spike probability 1' mark will be as high as 3 spikes
         
         ksp = length(spikesk); if ksp>2, error 'there can be only 1 or 2 spike set', end
         idx = (spikesk{ksp}>1e-3);
@@ -517,7 +517,7 @@ for k=1:ngraph
     if isempty(burstdelay), burstdelay = .3; end
     nsp = length(spikesk)-dorate;
     dtext = 0; %fn_coordinates(ha(k),'b2a',[1 0],'vector'); dtext = 4*dtext(1);
-    spk = zeros(1,0); for i=1:nsp, spk = union(spk,spikesk{i}); end
+    spk = zeros(1,0); for i=1:nsp, spk = row(union(spk,spikesk{i})); end
     if ~isempty(spk)
         delays = diff(spk);
         kburst = [1 1+find(delays>burstdelay)];

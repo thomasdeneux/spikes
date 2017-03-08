@@ -195,6 +195,7 @@ spec.finetune = struct( ...
 % Algorithm parameters
 spec.algorithm__private__parameters = 'label';
 par.algo.estimate = 'MAP'; % 'MAP', 'proba' or 'samples'
+par.algo.nspikemax = 3;
 par.algo.cmax = 10;
 par.algo.nc = []; % use appropriate default (see below) if not set
 par.algo.nc_norise = 100;
@@ -386,10 +387,12 @@ end
 
 % minimum and maximum values for baseline
 if isempty(par.F0)
+    par.F0 = zeros(1,2);
+    par.F0(1) = max( min(min(F),mean(F)/1.5), min(F)-(max(F)-min(F)) );
     if par.drift.parameter
-        par.F0 = [min(min(F),mean(F)/1.5) prctile(F,90)];
+        par.F0(2) = prctile(F,90);
     else
-        par.F0 = [min(min(F),mean(F)/1.5) max(mean(F),median(F))];
+        par.F0(2) = max(mean(F),median(F));
     end
     if par.F0(1)<=0
         if strcmp(par.display,'steps'), fprintf('min F0 %.3f',par.F0(1)), end
@@ -514,41 +517,41 @@ T = length(y);
 
 % Precomputations for the interpolation function x <- x*decay + n
 % (value before to look at if there was 0, 1, 2, 3 spikes)
-nspikemax = 3;
-cc0 = cc*decay;
-cc1 = min(cc0 + 1,cmax);
-cc2 = min(cc1 + 1,cmax);
-cc3 = min(cc2 + 1,cmax);
-% (interpolation matrices)
-M0 = interp1(cc,eye(nc),cc0,interpmode);
-M1 = interp1(cc,eye(nc),cc1,interpmode);
-M2 = interp1(cc,eye(nc),cc2,interpmode);
-M3 = interp1(cc,eye(nc),cc3,interpmode);
-if doMAP
-    MM = [M0; M1; M2; M3];
+nspikemax = par.algo.nspikemax;
+MM = cell(1,1+nspikemax);
+for i=0:nspikemax
+    if i==0
+        cci = cc*decay;
+    else
+        cci = min(cci + 1,cmax);
+    end
+    Mi = interp1(cc,eye(nc),cci,interpmode);
+    MM{1+i} = Mi;
 end
 
 % Precomputations for the spike likelihood
 % p(n) = exp(-rate*dt) (rate*dt)^n/n!, then take the negative log
-nspikmax = 3;
 if spikerate
     if par.special.burstcostsone
-        nspikcost = [0 ones(1,nspikmax)];
+        nspikcost = [0 ones(1,nspikemax)];
     else
-        nspikcost = 0:nspikmax;
+        nspikcost = 0:nspikemax;
     end
     lspike = +spikerate*par.dt +log(factorial(nspikcost)) -nspikcost*log(spikerate*par.dt);
     pspike = exp(-lspike)/sum(exp(-lspike)); % make the sum 1
     lspike = -log(pspike);
 else
     % no a priori on spikes!
-    lspike = zeros(1,1+nspikmax);
+    lspike = zeros(1,1+nspikemax);
 end
 
 % Precomputation for probability update
 % f1(c) = sum_n p(n) f(c*decay+n)
-if ~doMAP
-    MS = pspike(1)*M0 + pspike(2)*M1 + pspike(3)*M2 + pspike(4)*M3;
+if doMAP
+    MM = cat(1,MM{:});
+else
+    MS = 0;
+    for i=1:nspikemax, MS = MS + pspike(1+i)*MM{i}; end
 end
 
 % Precomputation for the measure after saturation
@@ -635,23 +638,21 @@ end
 % Precomputations for forward sweep
 if doproba
     % Precomputations for the interpolation function f1(c) = f((c-n)/decay)
-    % (value before to look at if there was 0, 1, 2, 3 spikes)
-    cc0 = cc/decay;
-    cc1 = (cc-1)/decay;
-    cc2 = (cc-2)/decay;
-    cc3 = (cc-3)/decay;
-    % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
-    M0 = interp1(cc,eye(nc),cc0,interpmode,0);
-    M0(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
-    M1 = interp1(cc,eye(nc),cc1,interpmode,0);
-    M2 = interp1(cc,eye(nc),cc2,interpmode,0);
-    M3 = interp1(cc,eye(nc),cc3,interpmode,0);
-    
-    % Precomputation for probability update
-    % f1(c) = sum_n p(n) f((c-n)/decay)
-    MS = pspike(1)*M0 + pspike(2)*M1 + pspike(3)*M2 + pspike(4)*M3;
-    % f1(c) = sum_n n p(n) f((c-n)/decay)
-    NS = pspike(2)*M1 + 2*pspike(3)*M2 + 3*pspike(4)*M3;
+    % and for probability update
+    MS = 0; NS = 0;
+    for i=0:nspikemax
+        % (value before to look at if there was 0, 1, 2, 3 spikes)
+        cci = (cc-i)/decay;
+        % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
+        Mi = interp1(cc,eye(nc),cci,interpmode,0);
+        if i==0
+            Mi(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
+        end
+        % f1(c) = sum_n p(n) f((c-n)/decay)
+        MS = MS + pspike(1+i)*Mi;
+        % f1(c) = sum_n n p(n) f((c-n)/decay)
+        NS = NS + i*pspike(1+i)*Mi;
+    end
 end
 
 % Minimization to find the best baseline value (MAP estimations only!)
@@ -697,18 +698,18 @@ for t=1:T
             xest(t) = min(xest(t-1)*decay + n(t),cc(end));
             cidx = 1+round(xest(t)/dc);
         elseif dosample
-            nspike = 0:nspikmax;                            % putative number of spikes
+            nspike = 0:nspikemax;                            % putative number of spikes
             ct = fn_add(column(xest(t-1,:))*decay,nspike);  % corresponding putative calcium values
             Lt = L(:,:,t);                                  % -log p(yt,..,yT|xt) [size nc*nb]
             if nb==1
-                Lt = interp1(Lt,1+ct/dc,'linear',Inf);      % same, interpolated to the putative state values [size nsample*(1+nspikmax)]
+                Lt = interp1(Lt,1+ct/dc,'linear',Inf);      % same, interpolated to the putative state values [size nsample*(1+nspikemax)]
             else
-                Lt = interpn(Lt,1+ct/dc,repmat(bidx(:),1,1+nspikmax),'linear',Inf); % same, interpolated to the putative state values [size nsample*(1+nspikmax)]
+                Lt = interpn(Lt,1+ct/dc,repmat(bidx(:),1,1+nspikemax),'linear',Inf); % same, interpolated to the putative state values [size nsample*(1+nspikemax)]
             end
             lt = fn_add(lspike,Lt);                         % ~ -log p(xt|x(t-1),yt,..,yT)
             cidx = logsample(lt,'rows');     % selected number of spike
             n(t,:) = cidx-1;
-            idx = sub2ind([nsample 1+nspikmax],1:nsample,row(cidx));
+            idx = sub2ind([nsample 1+nspikemax],1:nsample,row(cidx));
             xest(t,:) = ct(idx);
         elseif doproba
             % time update
@@ -853,46 +854,49 @@ bb = linspace(baselineinterval(1),baselineinterval(2),nb); % row vector
 T = length(y);
 
 % Precomputations for the interpolation function x <- x*decay + n
-% (value before to look at if there was 0, 1, 2, 3 spikes)
-nspikemax = 3;
-cc0 = cc*decay;
-cc1 = min(cc0 + 1,cmax);
-cc2 = min(cc0 + 2,cmax);
-cc3 = min(cc0 + 3,cmax);
-% (interpolation matrices)
-M0 = interp1(cc,eye(nc),cc0,interpmode);
+nspikemax = par.algo.nspikemax;
 if nonintegerspike==0
-    M1 = interp1(cc,eye(nc),cc1,interpmode);
-    M2 = interp1(cc,eye(nc),cc2,interpmode);
-    M3 = interp1(cc,eye(nc),cc3,interpmode);
-    if doMAP
-        MM = [M0; M1; M2; M3];
+    MM = cell(1,1+nspikemax);
+    for i=0:nspikemax
+        % (value before to look at if there was 0, 1, 2, 3 spikes)
+        if i==0
+            cci = cc*decay;
+        else
+            cci = min(cci + 1,cmax);
+        end
+        % (interpolation matrixc)
+        Mi = interp1(cc,eye(nc),cci,interpmode);
+        MM{1+i} = Mi;
     end
 else
+    if ~doMAP, error 'nonintegerspike handled only for MAP estimates', end
+    M0 = interp1(cc,eye(nc),cc*decay,interpmode);
     minjump = ceil(nonintegerspike/dc); % minimal calcium jump of an event
 end
 
 % Precomputations for the spike likelihood
 % p(n) = exp(-rate*dt) (rate*dt)^n/n!, then take the negative log
-nspikmax = 3;
 if spikerate
     if par.special.burstcostsone
-        nspikcost = [0 ones(1,nspikmax)];
+        nspikcost = [0 ones(1,nspikemax)];
     else
-        nspikcost = 0:nspikmax;
+        nspikcost = 0:nspikemax;
     end
     lspike = +spikerate*par.dt +log(factorial(nspikcost)) -nspikcost*log(spikerate*par.dt);
     pspike = exp(-lspike)/sum(exp(-lspike)); % make the sum 1
     lspike = -log(pspike);
 else
     % no a priori on spikes!
-    lspike = zeros(1,1+nspikmax);
+    lspike = zeros(1,1+nspikemax);
 end
 
 % Precomputation for probability update
 % f1(c) = sum_n p(n) f(c*decay+n)
-if ~doMAP
-    MS = pspike(1)*M0 + pspike(2)*M1 + pspike(3)*M2 + pspike(4)*M3;
+if doMAP
+    MM = cat(1,MM{:});
+else
+    MS = 0;
+    for i=0:nspikemax, MS = MS + pspike(1+i)*MM{1+i}; end
 end
 
 % Precomputation for the baseline drift
@@ -1128,23 +1132,21 @@ end
 % Precomputations for forward sweep
 if doproba
     % Precomputations for the interpolation function f1(c) = f((c-n)/decay)
-    % (value before to look at if there was 0, 1, 2, 3 spikes)
-    cc0 = cc/decay;
-    cc1 = (cc-1)/decay;
-    cc2 = (cc-2)/decay;
-    cc3 = (cc-3)/decay;
-    % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
-    M0 = interp1(cc,eye(nc),cc0,interpmode,0);
-    M0(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
-    M1 = interp1(cc,eye(nc),cc1,interpmode,0);
-    M2 = interp1(cc,eye(nc),cc2,interpmode,0);
-    M3 = interp1(cc,eye(nc),cc3,interpmode,0);
-    
-    % Precomputation for probability update
-    % f1(c) = sum_n p(n) f((c-n)/decay)
-    MS = pspike(1)*M0 + pspike(2)*M1 + pspike(3)*M2 + pspike(4)*M3;
-    % f1(c) = sum_n n p(n) f((c-n)/decay)
-    NS = pspike(2)*M1 + 2*pspike(3)*M2 + 3*pspike(4)*M3;
+    % and for probability update
+    MS = 0; NS = 0;
+    for i=0:nspikemax
+        % (value before to look at if there was 0, 1, 2, 3 spikes)
+        cci = (cc-i)/decay;
+        % (interpolation matrices: interpolated probabilities will be zero where cc<nspike)
+        Mi = interp1(cc,eye(nc),cci,interpmode,0);
+        if i==0
+            Mi(1,1:2) = [decay 1-decay]; % part of the probability in the 'zero calcium' bin at time t should be interpolated from the first 'non-zero calcium' bin at time t-1
+        end
+        % f1(c) = sum_n p(n) f((c-n)/decay)
+        MS = MS + pspike(1+i)*Mi;
+        % f1(c) = sum_n n p(n) f((c-n)/decay)
+        NS = NS + i*pspike(1+i)*Mi;
+    end
 elseif dosample
     lspike_drift = fn_add(column(lspike),row(ldrift));
 end
@@ -1204,19 +1206,19 @@ for t=1:T
             % draw calcium and baseline evolutions at once
             % too difficult this time to do all particles at once 
             % -> use a for loop
-            nspike = column(0:nspikmax);                        % putative number of spikes
-            ct = fn_add(xest(t-1,1,:)*decay, nspike);           % corresponding putative calcium values [(1+nspikmax)*1*nsample]
-            ct1 = repmat(ct,[1 ndrift 1]);                      % idem [(1+nspikmax)*ndrift*nsample]
+            nspike = column(0:nspikemax);                        % putative number of spikes
+            ct = fn_add(xest(t-1,1,:)*decay, nspike);           % corresponding putative calcium values [(1+nspikemax)*1*nsample]
+            ct1 = repmat(ct,[1 ndrift 1]);                      % idem [(1+nspikemax)*ndrift*nsample]
             bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);   % putative baseline values [1*ndrift*nsample]
-            bt1 = repmat(bt,[1+nspikmax 1 1]);                  % idem [(1+nspikmax)*ndrift*nsample]
+            bt1 = repmat(bt,[1+nspikemax 1 1]);                  % idem [(1+nspikemax)*ndrift*nsample]
             Lt = L(:,:,t);                                      % -log p(yt,..,yT|xt) [nc*nb]
             Lt = mygpu(Lt); % the computation in the next line seems to be the only one where GPU is profitable!
-            ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|xt)   [(1+nspikmax)*ndrift*nsample]
+            ltk0 = interpn(Lt,1+ct1/dc,1+(bt1-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|xt)   [(1+nspikemax)*ndrift*nsample]
             ltk0 = mygather(ltk0);
-            ltk = bsxfun(@plus,lspike_drift,ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikmax)*ndrift*nsample]
+            ltk = bsxfun(@plus,lspike_drift,ltk0);                   % ~ -log p(xt|x(t-1),yt,..,yT) [(1+nspikemax)*ndrift*nsample]
             [cidx bidx] = logsample(ltk,'2D');                  % [nsample]
             n(t,:) = cidx-1;
-            xest(t,1,:) = ct(sub2ind([1+nspikmax nsample],cidx,1:nsample));
+            xest(t,1,:) = ct(sub2ind([1+nspikemax nsample],cidx,1:nsample));
             xest(t,2,:) = bt(sub2ind([ndrift nsample],bidx,1:nsample));
             badsample = all(all(isinf(ltk))); % some samples ran out uncharted low-proba territory: put them back in the max-proba position
             if any(badsample)
@@ -1227,8 +1229,8 @@ for t=1:T
             %             for ksample = 1:nsample
             %                 ct = xest(t-1,1,ksample)*decay + nspike;    % corresponding putative calcium values
             %                 bt = xest(t-1,2,ksample) + discretesteps*sigmab;        % putative baseline values
-            %                 ltk0 = interpn(Lt,1+ct/dc,1+(bt-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikmax)*nb]
-            %                 ltk = lspike_drift + ltk0;                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikmax)*ndrift]
+            %                 ltk0 = interpn(Lt,1+ct/dc,1+(bt-bb(1))/db,'linear',Inf); % -log p(yt,..,yT|ct,Bt) [size (1+nspikemax)*nb]
+            %                 ltk = lspike_drift + ltk0;                   % ~ -log p(xt|x(t-1),yt,..,yT) [size (1+nspikemax)*ndrift]
             %                 [cidx bidx] = logsample(ltk);
             %                 n(t,ksample) = cidx-1;
             %                 xest(t,1,ksample) = ct(cidx);
