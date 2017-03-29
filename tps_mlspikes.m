@@ -892,9 +892,9 @@ end
 
 % Precomputation for probability update
 % f1(c) = sum_n p(n) f(c*decay+n)
-if doMAP
+if doMAP && ~nonintegerspike
     MM = cat(1,MM{:});
-else
+elseif ~doMAP
     MS = 0;
     for i=0:nspikemax, MS = MS + pspike(1+i)*MM{1+i}; end
 end

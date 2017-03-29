@@ -239,7 +239,7 @@ for i=1:ntrial
             jj = j+(0:nmerge); % time indices of events to be merged
             idx = kevent(jj);
             ni = sum(n{i}(idx)); % amplitude of current event
-            idx1 = round(sum(idx.*n{i}(idx))/ni); % time position (index) of merged event obtained as a weighted sum
+            idx1 = round(sum(idx.*double(n{i}(idx)))/ni); % time position (index) of merged event obtained as a weighted sum
             idxmax = kevent(j+nmerge); % time index at which maximum calcium is reached
             j = j+nmerge; % jump to the last of the merged events
             lastevent = eventsi(j);
@@ -574,9 +574,10 @@ for i=1:ndata
     % high-pass filter
     A = fn_filt(A,tdrift/dt(i),'hmd');
     % fit
-    amps{i} = (A\F{i});
+    Fi = double(F{i});
+    amps{i} = (A\Fi);
     Fpred{i} = A*amps{i};
-    dif{i} = F{i}-Fpred{i};
+    dif{i} = Fi-Fpred{i};
 end
 
 % error
@@ -607,7 +608,8 @@ drift = cell(1,ndata);
 fit = cell(1,ndata);
 dif = cell(1,ndata);
 for i=1:ndata
-    base = F{i}./Fpred0{i};
+    Fi = double(F{i});
+    base = Fi./Fpred0{i};
     if isequal(tdrift,0)
         drift{i} = mean(base)*ones(nt,1);
     elseif strcmp(tdrift,'trend')
@@ -616,7 +618,7 @@ for i=1:ndata
         drift{i} = fn_filt(base,tdrift/pfwd0.dt(i),'lmd',1); 
     end
     fit{i} = drift{i}.*Fpred0{i};
-    dif{i} = F{i}-fit{i};
+    dif{i} = Fi-fit{i};
 end
 
 % error

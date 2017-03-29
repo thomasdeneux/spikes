@@ -36,12 +36,8 @@ par = tps_mlspikes('par',dt,'saturation',.1, ...
     'finetune.sigma',.01,'drift.parameter',.01, ...
     'algo.interpmode','linear', ... % note that 'spline' would probably give better results
     'display','none','dographsummary',false);
-
-
-
 [spikest fit drift] = spk_est(calcium,par);
 
-%%
 % display
 clf reset
 set(gcf,'color','w')
@@ -500,8 +496,11 @@ par6s=parG;
 pcal6f=pcalG;
 par6f=parG;
 
-% the set values are those from Cheng et al, 2013. the commented ones are
+% The set values are those from Cheng et al, 2013. The commented ones are
 % those from Thomas with Svoboda-like normalization.
+% Note that introducing a rise time (parameter ton) considerably increases
+% computation time, as it makes the state space 3-dimensional (calcium +
+% dye binding + baseline) instead of 2-dimensional (calcium + baseline).
 pcal6s.tau = 0.786; % 1.84;
 pcal6s.a = 0.22; % 0.254;
 pcal6s.ton = 0.190; % 0.0677;
@@ -921,7 +920,7 @@ for i = 1 : 2
     drawnow
 end
 
-%% IV/1.3)
+%% IV/1.3) "Worst band" noise
 
 figure(gcf)
 fn_setfigsize(gcf,[1200,220])
@@ -995,7 +994,7 @@ for seed1 = 20 %[2 3 10 20 23 27 30]
     %     w1 = p(3)*.9*(T2(1)/sum(T2)); w2 = p(3)*.9*(T2(2)/sum(T2)); h = .75;
     %     clf, ha = [axes('pos',[p(1:2) w1 h]) axes('pos',[p(1)+p(3)-w2 p(2) w2 h])];
 
-    disp(['seed ' num2str(seed1)])
+    %disp(['seed ' num2str(seed1)])
     rng(seed1,'twister')
     spikes1 = spk_gentrain(rate1,T1,'bursty');
     spikespad1 = [spk_gentrain(rate1,T,'bursty') spikes1+T1];
@@ -1061,7 +1060,7 @@ for seed1 = 20 %[2 3 10 20 23 27 30]
         end
         %title(sprintf('(T=%g) (RMS=%g) (seed=%g)',T2(i), pcal1.sigma,seed1))
         
-        fprintf('T=%is -> %s\n',T2(i),str)
+        %fprintf('T=%is -> %s\n',T2(i),str)
         drawnow
     end
     drawnow

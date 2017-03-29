@@ -428,7 +428,7 @@ for k=1:ngraph
         ck = calciumk(:,1);
         for i=1:ne
             tpos = ev.time(i) + [-1 1]*.2;
-            ypos = max(ck(tt>tpos(1) & tt<tpos(2)));
+            ypos = double(max(ck(tt>tpos(1) & tt<tpos(2))));
             fn_arrow(ev.time(i)*[1 1],ypos+spikeheight*[1 .2],'40%',40,.4, ...
                 'patch','color','m')
             if strcmp(calciumeventsmode,'full')
