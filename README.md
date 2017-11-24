@@ -4,6 +4,10 @@
 
 _MLspike_ is an algorithm to reconstruct neuronal spiking activity from noisy calcium recordings. Its description and benchmarking can be found in [(Deneux et al. 2016)](http://www.nature.com/articles/ncomms12190).
 
+### Installation
+
+_MLspike_ toolbox needs also the _brick_ toolbox as a dependency (which is a set of useful generalist functions). Add the two _MLspike_ and _brick_ folder to the Matlab path, but not their sub-folders.
+
 ### Documentation
 
 Main functions are:
