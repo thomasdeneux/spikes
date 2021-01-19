@@ -1,9 +1,9 @@
 function [LB UB] = spf_getrange(dataflag,methodflag)
 % function [LB UB] = spf_getrange(dataflag,methodflag)
 
-datanum = fn_mod(max(1,dataflag),10);
+datanum = brick.mod(max(1,dataflag),10);
 [~, defpar parsetnames] = spf_parameters(methodflag);    
-nonlinearity = fn_switch(parsetnames{3},'saturation','saturation','p2','pnonlin');
+nonlinearity = brick.switch(parsetnames{3},'saturation','saturation','p2','pnonlin');
 dopnonlin = strcmp(nonlinearity,'pnonlin');
 doautosigma = isstruct(defpar.finetune.autosigmasettings);
 doadditivedrift = strcmp(defpar.drift.effect,'additive');

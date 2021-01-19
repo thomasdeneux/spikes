@@ -46,7 +46,7 @@ dohisto = nargin>=5 && strcmp(histo,'histo');
 
 % size, frequencies
 ntpad = 21*nt; % padding largely on both sides to avoid side effects and have fine frequency resolution
-freqs = fn_fftfrequencies(ntpad,1/dt,'centered')';
+freqs = brick.fftfrequencies(ntpad,1/dt,'centered')';
 freq2 = freqs.^2;
 
 % filter to transform white noise into pink noise

@@ -36,11 +36,11 @@ else
     % Usage for author only (T. Deneux)
     switch folderflag
         case {'train' 'test'}
-            d = fn_cd('spf','data',['spikefinder.' folderflag]);
+            d = brick.cd('spf','data',['spikefinder.' folderflag]);
         case {'precomp' 'testres'}
-            d = fn_cd('spf','save',folderflag);
+            d = brick.cd('spf','save',folderflag);
         case {'data' 'submissions' 'SUMO'}
-            d = fn_cd('spf',folderflag);
+            d = brick.cd('spf',folderflag);
         otherwise
             error('Unknown folder flag ''%s''', folderflag)
     end

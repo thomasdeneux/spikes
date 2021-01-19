@@ -38,7 +38,7 @@ if isstruct(varargin{2})
     p = varargin{2};
     pax = defaultpar('intern');
     if isfield(p,'mlspikepar'), pax.mlspikepar = p.mlspikepar; end % prevent error in next line
-    pax = fn_structmerge(pax,p,'strict','recursive');
+    pax = brick.structmerge(pax,p,'strict','recursive');
     if nargin>=3
         if ~strcmp(varargin{3},'sigmaonly'), error argument, end
         sigmaonly = true;
@@ -61,7 +61,7 @@ function [tau amp sigmaest eventdesc] = autocalibration(calcium,pax,sigmaonly)
 
 % input
 if ~iscell(calcium), calcium = {calcium}; end
-calcium = fn_map(@(c)c(:)/mean(c(:)),calcium);
+calcium = brick.map(@(c)c(:)/mean(c(:)),calcium);
 ntrial = length(calcium);
 for k=1:ntrial, calcium{k} = double(calcium{k}); end % needed for call to fmincon later
 dt = pax.dt;
@@ -76,7 +76,7 @@ pax.handlenonlinear = true;
 pax.domove12border = false;
 
 % prepare display
-dodisplay = fn_ismemberstr(pax.display,{'steps' 'pause' 'save'}) && ~sigmaonly;
+dodisplay = brick.ismemberstr(pax.display,{'steps' 'pause' 'save'}) && ~sigmaonly;
 dohisto = strcmp(pax.display,'histo');
 dopause = strcmp(pax.display,'pause');
 dosave = strcmp(pax.display,'save');
@@ -98,7 +98,7 @@ elseif dohisto
         hf = 691; if ~ishandle(hf), figure(hf), end
         clf(hf), set(hf,'numbertitle','off','name','Auto-calibration','handlevisibility','off')
         hahisto = axes('parent',hf);
-    elseif fn_isfigurehandle(hahisto)
+    elseif brick.isfigurehandle(hahisto)
         clf(hahisto)
         hahisto = axes('parent',hahisto);
     end
@@ -120,9 +120,9 @@ end
 %     else
 %         noiseestk = s.ynoise0;
 %         if s.ynoise1
-%             noiseestk = noiseestk + s.ynoise1*std(fn_filt(x/mean(x),[s.f1 s.f2]/dt(k),'b'));
+%             noiseestk = noiseestk + s.ynoise1*std(brick.filt(x/mean(x),[s.f1 s.f2]/dt(k),'b'));
 %         end
-%         noiseestk = fn_coerce(noiseestk,s.ynoisemin,s.ynoisemax);
+%         noiseestk = brick.coerce(noiseestk,s.ynoisemin,s.ynoisemax);
 %     end
 %     sigmaest(k) = noiseestk / sqrt(dt(k));
 % end
@@ -142,7 +142,7 @@ sigmaest_events = sigmaest;
 
 
 %% detect 'events'
-if dodisplay && pax.saturation && fn_dodebug, disp 'detect events: no nonlinearity here!', end
+if dodisplay && pax.saturation && brick.dodebug, disp 'detect events: no nonlinearity here!', end
 
 par = tps_mlspikes('par',dt);
 par.a = pax.eventa; % this value of a is not arbitrary but will influence the level of nonlinearity
@@ -154,25 +154,25 @@ par.tau = pax.eventtau;
 % par.hill = pax.hill;
 % par.c0 = pax.c0;
 
-%par.algo = fn_structmerge(par.algo,'cmax',8,'nc',40,'nb_driftslope',25,'ns',25);
+%par.algo = brick.structmerge(par.algo,'cmax',8,'nc',40,'nb_driftslope',25,'ns',25);
 par.special.nonintegerspike_minamp = pax.nonintegerspike_minamp;
 par.drift.parameter = pax.driftparam;
 par.drift.baselinestart = pax.baselinestart;
 par.finetune.spikerate = pax.eventrate;
 par.finetune.sigma = sigmaest_events;
 par.display = 'none';
-par = fn_structmerge(par,pax.mlspikepar,'recursive');
+par = brick.structmerge(par,pax.mlspikepar,'recursive');
 
 [n nn fit drift] = deal(cell(1,ntrial));
 
 % save time: do not repeat previous computation
 if pax.dosaveprecomp
-    H = fn_hash({calcium,par,dt},8);
-    fsave = fn_cd('spikes','save','autocalibration_precomp',['spk_autocalibration_firststep_' H '.mat']);
+    H = brick.hash({calcium,par,dt},8);
+    fsave = brick.cd('spikes','save','autocalibration_precomp',['spk_autocalibration_firststep_' H '.mat']);
     okf = exist(fsave,'file');
     if okf
         if dodisplay, disp 'load first step from file', end
-        [n,fit,drift] = fn_loadvar(fsave);
+        [n,fit,drift] = brick.loadvar(fsave);
     end
 end
 
@@ -192,7 +192,7 @@ for i=1:ntrial
 end
 if pax.dosaveprecomp && ~okf
     if dodisplay, disp 'save first step to temporary file to save time for next estimation with the same data', end
-    fn_savevar(fsave,n,fit,drift)
+    brick.savevar(fsave,n,fit,drift)
 end
 
 if dodisplay && dopause
@@ -300,7 +300,7 @@ if isempty(idx)
 end
 
 % restrict the analysis to kept trials
-idxanykeptevent = find(fn_map(@length,keptevents));
+idxanykeptevent = find(brick.map(@length,keptevents));
 keptevents1 = keptevents(idxanykeptevent);
 realspikes1 = realspikes(idxanykeptevent);
 modcalcium1 = modcalcium(idxanykeptevent);
@@ -313,7 +313,7 @@ ntrial1 = length(idxanykeptevent);
 tdrift = pax.tdrift;
 [modcalciumf1 modcalciumflow1] = deal(cell(1,ntrial1));
 for i=1:ntrial1
-    modcalciumf1{i} = fn_filt(modcalcium1{i},tdrift/dt1(i),'hmd');
+    modcalciumf1{i} = brick.filt(modcalcium1{i},tdrift/dt1(i),'hmd');
     modcalciumflow1{i} = modcalcium1{i}-modcalciumf1{i};
 end
 
@@ -323,7 +323,7 @@ if pax.est_tau_fulldata
     % (high-pass filter the original calcium signals)
     calciumf = cell(1,ntrial);
     for i=1:ntrial
-        calciumf{i} = fn_filt(calcium{i},tdrift/dt(i),'hmd');
+        calciumf{i} = brick.filt(calcium{i},tdrift/dt(i),'hmd');
     end
     % (estimation)
     opt = optimset('Algorithm','active-set', ...
@@ -342,7 +342,7 @@ else
     opt = optimset('Algorithm','active-set', ...
         'maxfunevals',10000,'tolx',1e-5,'tolfun',1e-8, ...
         'display','none'); %,'PlotFcns',{@optimplotx,@optimplotfval,@optimplotstepsize,@optimplotconstrviolation});
-    pstart = pax.eventtau; if fn_dodebug, disp 'line was modified since gcamp6s estimations!', end
+    pstart = pax.eventtau; if brick.dodebug, disp 'line was modified since gcamp6s estimations!', end
     LB = pax.taumin;
     UB = pax.taumax;
     FACT = 1e-2;
@@ -370,7 +370,7 @@ end
 
 if dodisplay
     spk_display(dt1,{realspikes1 nn1},{modcalcium1 fit1},'stats','none','in',hp2)
-    if all(fn_isemptyc(keptevents1))
+    if all(brick.isemptyc(keptevents1))
         ha = findall(hp2,'type','axes');
         ax = axis(ha);
         text(mean(ax(1:2)),ax(3)+diff(ax(3:4))/4,'auto-calibration failed: the few isolated event(s) found were judged too small!', ...
@@ -381,7 +381,7 @@ if dodisplay
 end
 
 % check again that not all events where thrown out
-if all(fn_isemptyc(keptevents1))
+if all(brick.isemptyc(keptevents1))
     warning 'auto-calibration failed: the few isolated event(s) found were judged too small!'
     [tau amp eventdesc] = deal([]);
     return
@@ -396,7 +396,7 @@ if dodisplay, disp 'histogram and assign number of spikes to events', end
 da = .001;
 aa = (0:da:applynonlinearity(20,pax)*pax.amax); % event amplitudes, not values of a
 na = length(aa);
-allamps = fn_timevector(cat(1,amps{:}),aa); % 'histogram' of event amplitudes
+allamps = brick.timevector(cat(1,amps{:}),aa); % 'histogram' of event amplitudes
 
 % filter and other processing
 m = (aa(:)>=pax.amin);
@@ -409,12 +409,12 @@ else
     amean = sqrt(pax.amin*pax.amax); % geometric mean
     sigmaa = applynonlinearity(1,pax)*max(pax.amax/2,amean); 
 end
-allampsf = fn_filt(allamps,sigmaa/da,'mask',m); 
-allampsff = allampsf ./ (fn_filt(allamps,2*sigmaa/da,'mask',m)+1e-6); % +1e-6 to avoid NaNs
+allampsf = brick.filt(allamps,sigmaa/da,'mask',m);
+allampsff = allampsf ./ (brick.filt(allamps,2*sigmaa/da,'mask',m)+1e-6); % +1e-6 to avoid NaNs
 idx = find(aa>=applynonlinearity(1,pax)*pax.amin & aa<=applynonlinearity(1,pax)*pax.amax);
 allamps3 = zeros(na,1);
 spikescaling = applynonlinearity(1:3,pax)/applynonlinearity(1,pax);
-allamps3(idx) = pax.costfactor*interp1(aa,allampsff,column(spikescaling(1:3))*row(aa(idx)));
+allamps3(idx) = pax.costfactor*interp1(aa,allampsff,brick.column(spikescaling(1:3))*brick.row(aa(idx)));
 
 % determine single-spike amplitude
 [dum midx] = max(allamps3);  %#ok<ASGLU>
@@ -467,11 +467,11 @@ end
 % end
 % 
 % % high-pass filter
-% for i=1:ndata, Fpred{i} = fn_filt(Fpred{i},tdrift/dt(i),'hmd'); end
+% for i=1:ndata, Fpred{i} = brick.filt(Fpred{i},tdrift/dt(i),'hmd'); end
 % 
 % % fit
 % amp = cat(1,Fpred{:})\cat(1,calciumf{:});
-% amp = fn_coerce(amp,pax.amin,pax.amax);
+% amp = brick.coerce(amp,pax.amin,pax.amax);
 % fit = cell(1,ndata); 
 % for i=1:ndata, fit{i} = amp*Fpred{i}+(calcium1{i}-calciumf{i}); end
 
@@ -481,7 +481,7 @@ end
 % forward parameters
 pfwd = spk_calcium('par');
 pfwd.dt = dt1;
-nt = fn_map(@length,modcalciumf1);
+nt = brick.map(@length,modcalciumf1);
 pfwd.T = nt.*dt1;
 pfwd.saturation = pax.saturation;
 pfwd.pnonlin = pax.pnonlin;
@@ -558,7 +558,7 @@ function [e Fpred amps] = energy(tau,events,F,dt,tdrift,pfwd0)
 pfwd = pfwd0;
 pfwd.tau = tau;
 ndata = numel(events);
-nt = fn_map(@length,F,'array');
+nt = brick.map(@length,F,'array');
 if isscalar(dt), dt = repmat(dt,[1 ndata]); end
 
 % forward prediction
@@ -573,7 +573,7 @@ for i=1:ndata
         A(:,j) = spk_calcium(events{i}(j),pfwd);
     end
     % high-pass filter
-    A = fn_filt(A,tdrift/dt(i),'hmd');
+    A = brick.filt(A,tdrift/dt(i),'hmd');
     % fit
     Fi = double(F{i});
     amps{i} = (A\Fi);
@@ -589,7 +589,7 @@ function [e fit drift] = energycalib(p,spikes,F,pfwd0,tdrift)
 
 % parameters and sizes
 ndata = numel(spikes);
-nt = fn_map(@length,F,'array');
+nt = brick.map(@length,F,'array');
 pfwd0.a = p(1);
 pfwd0.tau = p(2);
 if isscalar(pfwd0.dt), pfwd0.dt=repmat(pfwd0.dt,[1 ndata]); end
@@ -616,7 +616,7 @@ for i=1:ndata
     elseif strcmp(tdrift,'trend')
         drift{i} = base - detrend(base);
     else
-        drift{i} = fn_filt(base,tdrift/pfwd0.dt(i),'lmd',1); 
+        drift{i} = brick.filt(base,tdrift/pfwd0.dt(i),'lmd',1);
     end
     fit{i} = drift{i}.*Fpred0{i};
     dif{i} = Fi-fit{i};
@@ -626,7 +626,7 @@ end
 e = sqrt(mean(cat(1,dif{:}).^2))*100;
 
 % % display
-% fn_figure('energycalib')
+% brick.figure('energycalib')
 % spk_display(pfwd0.dt,spikes,{F fit drift})
 
 %---

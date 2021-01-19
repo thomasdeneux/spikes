@@ -70,7 +70,7 @@ psig.donormalize = false;
 
 if nargin==0, return, end
 
-if ischar(varargin{1}) && fn_ismemberstr(varargin{1},{'white' 'correlated' 'correlatedbias'})
+if ischar(varargin{1}) && brick.ismemberstr(varargin{1},{'white' 'correlated' 'correlatedbias'})
     presetflag = varargin{1};
     varargin(1) = [];
     switch presetflag
@@ -87,9 +87,9 @@ end
 if isempty(varargin)
     % nothing to do
 elseif isstruct(varargin{1})
-    psig = fn_structmerge(psig,varargin{1});
+    psig = brick.structmerge(psig,varargin{1});
 else
-    psig = fn_structmerge(psig,struct(varargin{:}),'strict');
+    psig = brick.structmerge(psig,struct(varargin{:}),'strict');
 end
 
 %---
@@ -112,7 +112,7 @@ for k=1:ntrial
         end
         if isscalar(psig.freqs), psig.freqs(2) = fnyquist; end
         xf = fft(x)/sqrt(ntk);
-        freqs = abs(fn_fftfrequencies(ntk,1/dtk,'centered'));
+        freqs = abs(brick.fftfrequencies(ntk,1/dtk,'centered'));
         okfreq = (freqs>=psig.freqs(1) & freqs<=psig.freqs(2));
         sigmaest(k) = rms(xf(okfreq));
     end

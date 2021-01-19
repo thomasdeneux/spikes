@@ -60,7 +60,7 @@ if isstruct(varargin{2})
     end
     par = num2cell(par);
     for i=1:ndata
-        par{i} = fn_structmerge(defaultpar,par{i},'strict','recursive');       
+        par{i} = brick.structmerge(defaultpar,par{i},'strict','recursive');
     end
     par = cell2mat(par);
 else
@@ -72,14 +72,14 @@ else
 end
 displaymode = par(1).display;
 if strcmp(displaymode,'default')
-    displaymode = fn_switch(ndata==1,'steps','count');
+    displaymode = brick.switch(ndata==1,'steps','count');
     [par.display] = deal(displaymode);
 end
 
 % Autocalibration of parameter finetune.sigma? (= a priori level of noise)
 finetune = [par.finetune];
 sigmas = {finetune.sigma};
-doautosigma = fn_isemptyc(sigmas);
+doautosigma = brick.isemptyc(sigmas);
 if any(diff(doautosigma)), error 'multiple data: parameter finetune.sigma must be always empty or always non-empty', end
 if doautosigma(1)
     if ndata>1 && ~isequal(par.dt), error 'cannot auto-estimate finetune.sigma on multiple data with different time constants', end
@@ -94,13 +94,13 @@ if iscell(x)
     out = cell(nout,ndata);
     switch displaymode
         case 'steps'
-            fn_progress('tps_mlspike',ndata,'noerase')
+            brick.progress('tps_mlspike',ndata,'noerase')
         case 'count'
-            fn_progress('tps_mlspike',ndata)
+            brick.progress('tps_mlspike',ndata)
         case 'none'
     end
     for k=1:ndata
-        if ~strcmp(displaymode,'none'), fn_progress(k), end
+        if ~strcmp(displaymode,'none'), brick.progress(k), end
         [out{:,k}] = tps_mlspikes(x{k},par(k)); 
     end
     varargout = num2cell(out,2);
@@ -108,7 +108,7 @@ if iscell(x)
     if nout>=4, varargout{4} = [varargout{4}{:}]; end
     if ~xiscell
         for i=setdiff(1:nout,[3 4])
-            dim = fn_switch(isvector(varargout{i}{1}),2,3);
+            dim = brick.switch(isvector(varargout{i}{1}),2,3);
             varargout{i} = cat(dim,varargout{i}{:}); 
         end
     end
@@ -281,7 +281,7 @@ while i<length(varargin)
         end
     end
 end
-par = fn_structmerge(par,p,'strict','recursive');
+par = brick.structmerge(par,p,'strict','recursive');
 
 %-------------------------------------------------------------------------%
 %                       FORWARD                                           %
@@ -453,7 +453,7 @@ end
 % display
 if par.dographsummary
     ha = initgraphsummary;
-    n1 = fn_switch(par.special.nonintegerspike_minamp>0,round(n*par.a*100),n); 
+    n1 = brick.switch(par.special.nonintegerspike_minamp>0,round(n*par.a*100),n);
     if doMAP
         spk_display(par.dt,n1,{F Ffit drift},'in',ha(4))
     elseif strcmpi(par.algo.estimate,'proba')
@@ -492,8 +492,8 @@ estimate = par.algo.estimate;
 doMAP = strcmpi(estimate,'MAP');
 doproba = strcmp(estimate,'proba');
 dosample = ismember(estimate,{'sample' 'samples'});
-interpmode = fn_switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
-nsample = fn_switch(dosample,par.algo.nsample,1);
+interpmode = brick.switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
+nsample = brick.switch(dosample,par.algo.nsample,1);
 
 % Special: non-integer spikes
 if par.special.nonintegerspike_minamp, error 'noninteger spikes not handled with a fixed baseline', end
@@ -559,7 +559,7 @@ end
 % Precomputation for the measure after saturation
 % p(y|x) = 1/(sqrt(2*pi)*sigma) exp(-(y-a*x/(1+sat*x))^2/2*sigma^2)
 dye = 1 + a * cc./(1+sat*cc);
-xxmeasure = fn_mult(dye,bb);
+xxmeasure = brick.mult(dye,bb);
 lmeasure = -log(1/(sqrt(2*pi)*sigmay));
 
 % Precomputation for the a priori probability of calcium c(1)
@@ -589,9 +589,9 @@ end
 % N(c,b,t) = argmin_n(t+1) min_{n(t+2),..,n(T)} -log(p(c(t+1),..,c(T),y(t+1),..,y(T)|c(t)=c,all b(t')=b))
 if ~doMAP, L = zeros(nc,nb,T); end
 N = zeros(nc,nb,T,'uint8');
-% fn_progress('backward',T)
+% brick.progress('backward',T)
 for t=T:-1:1
-%     fn_progress(t)
+%     brick.progress(t)
     % L(c,b,t) = min_n(t+1) -log(p(n(t+1)) + L(c(t+1),b,t+1)   <- time update 
     %             - log(p(y(t)|x(t))                           <- measure update
         
@@ -606,7 +606,7 @@ for t=T:-1:1
             % each column in 'lt1' corresponds to a different number of
             % spikes, then we find what is the optimal number of spikes that
             % gives the minimum
-            lt1 = fn_add(lspike, reshape(MM*lt,nc,nspikemax+1,nb));
+            lt1 = brick.add(lspike, reshape(MM*lt,nc,nspikemax+1,nb));
             [lt n1] = min(lt1,[],2);
             lt = squeeze(lt); n1 = squeeze(n1-1);
             N(:,:,t+1) = n1;
@@ -692,7 +692,7 @@ for t=1:T
         elseif doproba
             % integral
             LL = logsumexp(lt);
-            xest(t) = sum(row(fn_mult(cc,log2proba(lt))));
+            xest(t) = sum(brick.row(brick.mult(cc,log2proba(lt))));
         end
     else
         if doMAP
@@ -701,17 +701,17 @@ for t=1:T
             cidx = 1+round(xest(t)/dc);
         elseif dosample
             nspike = 0:nspikemax;                            % putative number of spikes
-            ct = fn_add(column(xest(t-1,:))*decay,nspike);  % corresponding putative calcium values
+            ct = brick.add(brick.column(xest(t-1,:))*decay,nspike);  % corresponding putative calcium values
             Lt = L(:,:,t);                                  % -log p(yt,..,yT|xt) [size nc*nb]
             if nb==1
                 Lt = interp1(Lt,1+ct/dc,'linear',Inf);      % same, interpolated to the putative state values [size nsample*(1+nspikemax)]
             else
                 Lt = interpn(Lt,1+ct/dc,repmat(bidx(:),1,1+nspikemax),'linear',Inf); % same, interpolated to the putative state values [size nsample*(1+nspikemax)]
             end
-            lt = fn_add(lspike,Lt);                         % ~ -log p(xt|x(t-1),yt,..,yT)
+            lt = brick.add(lspike,Lt);                         % ~ -log p(xt|x(t-1),yt,..,yT)
             cidx = logsample(lt,'rows');     % selected number of spike
             n(t,:) = cidx-1;
-            idx = sub2ind([nsample 1+nspikemax],1:nsample,row(cidx));
+            idx = sub2ind([nsample 1+nspikemax],1:nsample,brick.row(cidx));
             xest(t,:) = ct(idx);
         elseif doproba
             % time update
@@ -726,16 +726,16 @@ for t=1:T
             % the same, but numerical errors would departure from it)
             lt1 = lt;                           % -log p(c(t-1)|b,y1,..,y(t-1))
             lmin = min(lt1);
-            pt1 = exp(fn_subtract(lmin,lt1));   % ~ p(c(t-1)|b,y1,..,y(t-1))
+            pt1 = exp(brick.subtract(lmin,lt1));   % ~ p(c(t-1)|b,y1,..,y(t-1))
             pt = MS*pt1;                        % ~ p(ct|b,y1,..,y(t-1))
             nt = (NS*pt1)./pt; nt(pt==0) = 0;   % E(nt|ct,b,y1,..,y(t-1))
-            lt = fn_subtract(lmin,log(pt));     % -log p(ct|b,y1,..,y(t-1))
+            lt = brick.subtract(lmin,log(pt));     % -log p(ct|b,y1,..,y(t-1))
             lty = lt + L(:,:,t);                % ~ -log p(ct|b,y)
-            pty = exp(fn_subtract(min(lty),lty));   % ~ p(ct|b,y)
-            pty = fn_div(pty,sum(pty));         % make sum 1 in each column
-            pty = fn_mult(pty,pbaseline);       % ~ p(ct,b|y), global sum is 1
-            n(t) = sum(row(nt.*pty));           % E(nt|y)
-            xest(t) = sum(row(fn_mult(cc,pty)));% E(xt|y)
+            pty = exp(brick.subtract(min(lty),lty));   % ~ p(ct|b,y)
+            pty = brick.div(pty,sum(pty));         % make sum 1 in each column
+            pty = brick.mult(pty,pbaseline);       % ~ p(ct,b|y), global sum is 1
+            n(t) = sum(brick.row(nt.*pty));           % E(nt|y)
+            xest(t) = sum(brick.row(brick.mult(cc,pty)));% E(xt|y)
             
             % measure update
             lt = lt + (lmeasure+(y(t)-xxmeasure).^2/(2*sigmay^2));
@@ -772,7 +772,7 @@ end
 xsaturation = a * xest./(sat*xest+1);
 
 % Predicted measure (taking drifts into account)
-yfit = fn_mult(1+xsaturation,row(baseline));
+yfit = brick.mult(1+xsaturation,brick.row(baseline));
 
 % Back from normalized to data scale
 Ffit = yfit*F0;
@@ -821,8 +821,8 @@ estimate = par.algo.estimate;
 doMAP = strcmpi(estimate,'MAP');
 doproba = strcmp(estimate,'proba');
 dosample = ismember(estimate,{'sample' 'samples'});
-interpmode = fn_switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
-nsample = fn_switch(dosample,par.algo.nsample,1);
+interpmode = brick.switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
+nsample = brick.switch(dosample,par.algo.nsample,1);
 
 % GPU implementation?
 dogpu = par.algo.dogpu;
@@ -942,11 +942,11 @@ else
     pdrift = pdrift/sum(pdrift);
         
     % matrix for baseline time update
-    bb1 = fn_add((1:nb)',discretesteps*(sigmab/db));
+    bb1 = brick.add((1:nb)',discretesteps*(sigmab/db));
     BB = interp1(eye(nb),bb1(:),'linear',NaN); % (nb*ndrift)*nb
     BB = reshape(BB,[nb ndrift nb]);
     pdriftc = repmat(pdrift,[nb 1 nb]);
-    pdriftc(isnan(BB)) = 0; pdriftc = fn_div(pdriftc,sum(pdriftc,2));
+    pdriftc(isnan(BB)) = 0; pdriftc = brick.div(pdriftc,sum(pdriftc,2));
     BB(isnan(BB)) = 0;
     BB = squeeze(sum(BB.*pdriftc,2)); % nb*nb  
     BB = BB'; % will operate on columns
@@ -967,9 +967,9 @@ else
 end
 switch par.drift.effect
     case 'additive'
-        xxmeasure = fn_add(dye-1,bb);
+        xxmeasure = brick.add(dye-1,bb);
     case 'multiplicative'
-        xxmeasure = fn_mult(dye,bb);
+        xxmeasure = brick.mult(dye,bb);
     otherwise
         error flag
 end
@@ -1036,7 +1036,7 @@ for t=T:-1:1
         if doMAP && ~nonintegerspike
             % what is the best number of spikes
             %             lt1 = lspike_interp + reshape(MM*lt,nc,nspikemax+1,nb);
-            lt1 = fn_add(lspike, reshape(MM*lt,nc,nspikemax+1,nb));
+            lt1 = brick.add(lspike, reshape(MM*lt,nc,nspikemax+1,nb));
             [lt n1] = min(lt1,[],2);
             lt = squeeze(lt); n1 = squeeze(n1-1);
             N(:,:,t+1) = n1;
@@ -1096,7 +1096,7 @@ for t=T:-1:1
             lt1ok = lt1(oksides,:);
             idriftok = idrift(oksides);
             nok = sum(oksides(:));
-            indices3 = fn_add((1:nok)'+nok*(idriftok-1),nok*[-1 0 1]);
+            indices3 = brick.add((1:nok)'+nok*(idriftok-1),nok*[-1 0 1]);
             values3 = lt1ok(indices3);
             qq = values3 * QQ;
             idriftmin = -qq(:,2)./(2*qq(:,1)); % (q(x) = ax^2 + bx + c -> the min is -b/2a)
@@ -1150,7 +1150,7 @@ if doproba
         NS = NS + i*pspike(1+i)*Mi;
     end
 elseif dosample
-    lspike_drift = fn_add(column(lspike),row(ldrift));
+    lspike_drift = brick.add(brick.column(lspike),brick.row(ldrift));
 end
 
 % Forward collecting/sampling/smoothing step
@@ -1161,9 +1161,9 @@ else
 end
 doxest = ~doproba || (nargout>=2) || par.dographsummary;
 if doxest, xest = zeros(T,2,nsample,'single'); end
-if dosample && strcmp(par.display,'steps'), fn_progress('sampling',T), end
+if dosample && strcmp(par.display,'steps'), brick.progress('sampling',T), end
 for t=1:T
-    if dosample && strcmp(par.display,'steps'), fn_progress(t), end
+    if dosample && strcmp(par.display,'steps'), brick.progress(t), end
     if t==1
         if doMAP
             if par.drift.baselinestart
@@ -1189,8 +1189,8 @@ for t=1:T
             LL = logsumexp(lt(:));
             pt = log2proba(lt);
             if doxest
-                xest(t,1) = sum(row(fn_mult(cc,pt)));
-                xest(t,2) = sum(row(fn_mult(bb,pt)));
+                xest(t,1) = sum(brick.row(brick.mult(cc,pt)));
+                xest(t,2) = sum(brick.row(brick.mult(bb,pt)));
             end
             
             % now lt represents -log p(xt|y1,..,yt), so we use the time
@@ -1199,7 +1199,7 @@ for t=1:T
         end
     else
         if doMAP
-            xest(t,2) = fn_coerce(xest(t-1,2) + D(cidx,bidx,t),baselineinterval);
+            xest(t,2) = brick.coerce(xest(t-1,2) + D(cidx,bidx,t),baselineinterval);
             bidx = 1+round((xest(t,2)-bb(1))/db);
             n(t) = N(cidx,bidx,t);
             xest(t,1) = min(xest(t-1,1)*decay + double(n(t)),cmax);
@@ -1208,10 +1208,10 @@ for t=1:T
             % draw calcium and baseline evolutions at once
             % too difficult this time to do all particles at once 
             % -> use a for loop
-            nspike = column(0:nspikemax);                        % putative number of spikes
-            ct = fn_add(xest(t-1,1,:)*decay, nspike);           % corresponding putative calcium values [(1+nspikemax)*1*nsample]
+            nspike = brick.column(0:nspikemax);                        % putative number of spikes
+            ct = brick.add(xest(t-1,1,:)*decay, nspike);           % corresponding putative calcium values [(1+nspikemax)*1*nsample]
             ct1 = repmat(ct,[1 ndrift 1]);                      % idem [(1+nspikemax)*ndrift*nsample]
-            bt = fn_add(xest(t-1,2,:), discretesteps*sigmab);   % putative baseline values [1*ndrift*nsample]
+            bt = brick.add(xest(t-1,2,:), discretesteps*sigmab);   % putative baseline values [1*ndrift*nsample]
             bt1 = repmat(bt,[1+nspikemax 1 1]);                  % idem [(1+nspikemax)*ndrift*nsample]
             Lt = L(:,:,t);                                      % -log p(yt,..,yT|xt) [nc*nb]
             Lt = mygpu(Lt); % the computation in the next line seems to be the only one where GPU is profitable!
@@ -1271,10 +1271,10 @@ for t=1:T
                 
                 % expectancy for number of spikes
                 nt = (NS*pt1b)./pt; nt(pt==0) = 0;      % E(nt|xt,y1,..,y(t-1))
-                n(t) = sum(row(nt.*pty));               % E(nt|y)
+                n(t) = sum(brick.row(nt.*pty));               % E(nt|y)
                 if doxest
-                    xest(t,1) = sum(row(fn_mult(cc,pty)));  % E(ct|y)
-                    xest(t,2) = sum(row(fn_mult(bb,pty)));  % E(bt|y)
+                    xest(t,1) = sum(brick.row(brick.mult(cc,pty)));  % E(ct|y)
+                    xest(t,2) = sum(brick.row(brick.mult(bb,pty)));  % E(bt|y)
                 end
                 
                 % lt measure update
@@ -1313,8 +1313,8 @@ if par.dographsummary
         PB = zeros(nb,T);
         for t=1:T
             Pt = log2proba(L(:,:,t));
-            PC(:,t) = fn_normalize(sum(Pt,2),1,'proba');
-            PB(:,t) = fn_normalize(sum(Pt,1),2,'proba');
+            PC(:,t) = brick.normalize(sum(Pt,2),1,'proba');
+            PB(:,t) = brick.normalize(sum(Pt,1),2,'proba');
         end
     end
     % init graphics
@@ -1373,7 +1373,7 @@ end
 Ffit = yfit*F0;
 
 % Reajust F0 and xest(:,2) to make the mean of xest(:,2) 1
-avgb = mean(row(xest(:,2,:)));
+avgb = mean(brick.row(xest(:,2,:)));
 F0 = F0 * avgb;
 xest(:,2,:) = xest(:,2,:) / avgb;
 
@@ -1444,7 +1444,7 @@ cc = (0:nc-1)'*dc; % column vector
 cmaxn = (c0+cmax)^hill - c0^hill;
 pmax = cmaxn ./ (1+sat*cmaxn); % remains btw. 0 and 1/sat
 np = par.algo.np; 
-if fn_dodebug, disp 'non-regular probe spacing', end
+if brick.dodebug, disp 'non-regular probe spacing', end
 dph = pmax^(1/hill)/(np-1);
 pp = linspace(0,pmax^(1/hill),np).^hill;
 pp(end) = pmax; % necessary to avoid that through numerical errors we have pmax^(1/hill)^hill slightly less than pmax, resulting in interpolation errors later
@@ -1459,7 +1459,7 @@ T = length(y);
 
 % Precomputations for the interpolation function x <- x*decay + n
 % (value before to look at if there was 0, 1, 2, 3 spikes)
-if fn_dodebug, disp 'nspikemax = 1!', end
+if brick.dodebug, disp 'nspikemax = 1!', end
 nspikemax = 1;
 cc0 = cc*decay;
 cc1 = min(cc0 + 1,cmax);
@@ -1493,11 +1493,11 @@ lspike = repmat(lspike,[nc 1 np*nb]);
 
 % Precomputation for the probe bounding to calcium
 % (use matrices calcium x probe)
-ccc = repmat(column(cc),[1 np]);
+ccc = repmat(brick.column(cc),[1 np]);
 cn = (c0+ccc).^hill - c0^hill;
 ptarget = cn ./ (1+sat*cn); % remains btw. 0 and 1/sat
 pspeed = (1+sat*cn) / ton;
-ppp = repmat(row(pp),[nc 1]);
+ppp = repmat(brick.row(pp),[nc 1]);
 % (probe value at t+1)
 ppp1 = ptarget + (ppp-ptarget).*exp(-pspeed*dt); % remains btw. 0 and 1/sat
 % (interpolation: first compute the interpolation for each calcium value,
@@ -1529,9 +1529,9 @@ QQ = QQ'; % operation on columns
 xxmeasure = a*ppp;
 switch par.drift.effect
     case 'additive'
-        xxmeasure = fn_add(xxmeasure,third(bb));
+        xxmeasure = brick.add(xxmeasure,brick.third(bb));
     case 'multiplicative'
-        xxmeasure = fn_mult(1+xxmeasure,third(bb));
+        xxmeasure = brick.mult(1+xxmeasure,brick.third(bb));
     otherwise
         error flag
 end
@@ -1568,9 +1568,9 @@ end
 % L = zeros(nc,np,nb,T,'single');
 D = zeros(nc,np,nb,T,'int8');
 N = zeros(nc,np,nb,T,'uint8');
-fn_progress('backward',T)
+brick.progress('backward',T)
 for t=T:-1:1
-    fn_progress(t)
+    brick.progress(t)
     % L(x,t) = min_n(t+1) -log(p(n(t+1)) + min_b(t+1) -log(p(b(t+1)|b(t))) + L(x(t+1),t+1)   <- time update (minimize first over the drift in b, then over the number of spikes)
     %          - log(p(y(t)|x(t))                                                            <- measure update
     
@@ -1601,7 +1601,7 @@ for t=T:-1:1
         lt1ok = lt1(oksides,:);
         idriftok = idrift(oksides);
         nok = sum(oksides(:));
-        indices3 = fn_add((1:nok)'+nok*(idriftok-1),nok*[-1 0 1]);
+        indices3 = brick.add((1:nok)'+nok*(idriftok-1),nok*[-1 0 1]);
         values3 = lt1ok(indices3);
         qq = values3 * QQ;
         idriftmin = -qq(:,2)./(2*qq(:,1)); % (q(x) = ax^2 + bx + c -> the min is -b/2a)
@@ -1663,7 +1663,7 @@ for t=T:-1:1
         drawnow
     end
 end
-fn_progress end
+brick.progress end
 
 % Forward collecting/sampling/smoothing step
 n = zeros(T,1);
@@ -1686,7 +1686,7 @@ for t=1:T
     else
         % baseline evolution
         Dt = double(D(cidx,pidx,bidx,t))/(127/maxdrift/db);
-        xest(t,3) = fn_coerce(xest(t-1,3) + Dt,baselineinterval);
+        xest(t,3) = brick.coerce(xest(t-1,3) + Dt,baselineinterval);
         bidx = 1+round((xest(t,3)-bb(1))/db);
         % calcium evolution
         n(t) = N(cidx,pidx,bidx,t);
@@ -1700,7 +1700,7 @@ for t=1:T
         pidx = 1+round(xest(t,2)^(1/hill)/dph);
         if cidx==1, pidx=1; end
         if pidx>np
-            if fn_dodebug, keyboard, end
+            if brick.dodebug, keyboard, end
             pidx=np;
         end
     end
@@ -1816,7 +1816,7 @@ function ha = initgraphsummary()
 hf = 253;
 if ~ishandle(hf)
     figure(hf)
-    fn_setfigsize(hf,400,800)
+    brick.setfigsize(hf,400,800)
     colormap(hf,'gray')
     set(hf,'numbertitle','off','name','tps_mlspike GRAPH SUMMARY',...
         'handlevisibility','off')
@@ -1854,7 +1854,7 @@ end
 
 % subtract the largest in each dim
 xmax = min(X,[],dim);
-X = fn_subtract(X,xmax);
+X = brick.subtract(X,xmax);
 s = xmax-log(sum(exp(-X),dim));
 s(isinf(xmax)) = Inf;
 
@@ -1868,7 +1868,7 @@ function Y = logmultexp(W,X)
 
 % X = m + X1
 m = min(X);
-X1 = fn_subtract(X,m);
+X1 = brick.subtract(X,m);
 
 % exp(X) = exp(m) * exp(X1)
 X1e = exp(-X1);
@@ -1877,18 +1877,18 @@ X1e = exp(-X1);
 Y1e = W*X1e;
 
 % log(W*exp(X)) = m + log(W*exp(X1))
-Y = fn_subtract(m,log(Y1e));
+Y = brick.subtract(m,log(Y1e));
 Y(:,isinf(m)) = Inf;
 
 % % We want to avoid Inf in Y (i.e. 0 in Y1e)
 % Yisinf = (Y==Inf);
 % while any(Yisinf(:))
 %     m = m + 700;
-%     X1 = fn_subtract(X,m);
+%     X1 = brick.subtract(X,m);
 %     X1 = max(X1,-700);
 %     X1e = exp(-X1);
 %     Y1e = W*X1e;
-%     Y1 = fn_subtract(m,log(Y1e));
+%     Y1 = brick.subtract(m,log(Y1e));
 %     Y(Yisinf) = Y1(Yisinf);
 %     Yisinf = (Y==Inf);
 % end
@@ -1903,7 +1903,7 @@ function Y = logmultexp_column(W,X)
 
 % X = m + X1
 m = min(X,[],2);
-X1 = fn_subtract(X,m);
+X1 = brick.subtract(X,m);
 
 % exp(X) = exp(m) * exp(X1)
 X1e = exp(-X1);
@@ -1912,18 +1912,18 @@ X1e = exp(-X1);
 Y1e = X1e*W;
 
 % log(exp(X)*W) = m + log(exp(X1)*W)
-Y = fn_subtract(m,log(Y1e));
+Y = brick.subtract(m,log(Y1e));
 Y(isinf(m),:) = Inf;
 
 % % We want to avoid Inf in Y (i.e. 0 in Y1e)
 % Yisinf = (Y==Inf);
 % while any(Yisinf(:))
 %     m = m + 700;
-%     X1 = fn_subtract(X,m);
+%     X1 = brick.subtract(X,m);
 %     X1 = max(X1,-700);
 %     X1e = exp(-X1);
 %     Y1e = X1e*W;
-%     Y1 = fn_subtract(m,log(Y1e));
+%     Y1 = brick.subtract(m,log(Y1e));
 %     Y(Yisinf) = Y1(Yisinf);
 %     Yisinf = (Y==Inf);
 % end
@@ -1990,7 +1990,7 @@ elseif iscell(x)
     for i=1:numel(x)
         x{i} = gpuconvert(x{i});
     end
-elseif islogical(x) && ~isscalar(x) && fn_dodebug
+elseif islogical(x) && ~isscalar(x) && brick.dodebug
     disp 'convert or not convert?'
     keyboard
 elseif islogical(x) || ischar(x)

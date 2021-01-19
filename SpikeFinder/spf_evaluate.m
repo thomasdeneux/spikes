@@ -12,14 +12,14 @@ end
 function [out spikecountadj delay outall] = smoothcorr(spikecountest,spikecount,smooth)
 
 dtspikes = .01;
-spikecountadj = fn_filt(spikecountest,smooth/dtspikes,'lk');
+spikecountadj = brick.filt(spikecountest,smooth/dtspikes,'lk');
 ncell = size(spikecount,2);
 minlag = -5; % corresponds to -50ms
 maxlag = 20; % corresponds to 200ms
 outall = zeros(1-minlag+maxlag,ncell);
 for i=1:ncell
     ntc = find(~isnan(spikecount(:,i)),1,'last');
-    spkcib = fn_bin(spikecount(1:ntc,i),4);
+    spkcib = brick.bin(spikecount(1:ntc,i),4);
     xi = spikecountadj(:,i);
     if ~any(xi)
         % no spike estimated -> consider correlation is zero (out is one)
@@ -33,7 +33,7 @@ for i=1:ncell
             elseif k>0
                 xij = [xi(1+k:end); zeros(k,1)];
             end
-            xijb = fn_bin(xij(1:ntc),4);
+            xijb = brick.bin(xij(1:ntc),4);
             c = corrcoef(xijb,spkcib);
             c(isnan(c)) = 0;
             outall(1-minlag+k,i) = 1-c(1,2);

@@ -22,8 +22,8 @@ classdef spk_demoGUI < hgsetget
         function G = spk_demoGUI
             % graphic objects
             % (controls)
-            hf = fn_figure('MLspike demo - Controls');
-            fn_setfigsize(hf,600,700)
+            hf = brick.figure('MLspike demo - Controls');
+            brick.setfigsize(hf,600,700)
             set(hf,'numbertitle','off')
             G.grob.hf = hf;
             G.grob.pdat = uipanel('parent',hf,'pos',[.01  .01 .485 .98]);     % controls for spikes parameters
@@ -32,7 +32,7 @@ classdef spk_demoGUI < hgsetget
                 'string','Erase estimation result','callback',@(u,e)eraseresult(G));
             initcontrols(G)
             % (display)
-            G.grob.display = fn_figure('MLspike demo - Result');
+            G.grob.display = brick.figure('MLspike demo - Result');
             set(G.grob.display,'numbertitle','off')
             % run
             getdata(G)
@@ -84,7 +84,7 @@ classdef spk_demoGUI < hgsetget
             [spec(2).noiseseed1 spec(2).noiseseed2] = deal('noise seed');
             [spec(2).dtsim spec(2).dtown] = deal('dt');
             spec(2).owndata = 'data from Matlab variable(s)';
-            G.Xdat = fn_control(pdat,spec,@(s)getdata(G),G.grob.pdat);
+            G.Xdat = brick.control(pdat,spec,@(s)getdata(G),G.grob.pdat);
             checkavailablepar(G,'dat');
             
             % ESTIMATION
@@ -109,7 +109,7 @@ classdef spk_demoGUI < hgsetget
                 'discretization__parameters','label', ...
                 'cmax','double','nc','double','np','double',...
                 'nb','double');
-            G.Xest = fn_control(p,spec,@(s)doest(G),G.grob.pest);
+            G.Xest = brick.control(p,spec,@(s)doest(G),G.grob.pest);
             checkavailablepar(G,'est');
             
             % no action if Matlab is busy
@@ -154,7 +154,7 @@ classdef spk_demoGUI < hgsetget
             % default values
             pest = tps_mlspikes('par');
             % regular parameters
-            pest.algo.estimate = fn_switch(p.output, ...
+            pest.algo.estimate = brick.switch(p.output, ...
                 'MAP spike train','MAP','spike probabilities','proba','spike samples','samples');
             if strcmp(pest.algo.estimate,'samples')
                 pest.algo.nsample = 4;
@@ -200,7 +200,7 @@ classdef spk_demoGUI < hgsetget
                 F = {'owndata' 'calcium' 'dtown' 'real__spike__times'};
                 doown = X.use__my__own__data;
                 for i=1:length(xx)
-                    use = onoff(ismember(names{i},F0) || (ismember(names{i},F)==doown));
+                    use = brick.onoff(ismember(names{i},F0) || (ismember(names{i},F)==doown));
                     set(xx(i).hname,'enable',use)
                     if ~isempty(xx(i).hval), set(xx(i).hval,'enable',use), end
                 end
@@ -220,19 +220,19 @@ classdef spk_demoGUI < hgsetget
             F = {'saturation' 'hill' 'p2' 'p3'};
             for i=1:length(F)
                 xi = xx(strcmp(names,F{i}));
-                set([xi.hname xi.hval],'enable',onoff(en(i)))
+                set([xi.hname xi.hval],'enable',brick.onoff(en(i)))
             end
             % number of drifts only if drift amplitude
             if strcmp(flag,'cal')
                 xi = xx(strcmp(names,'drift__n'));
-                set([xi.hname xi.hval],'enable',onoff(X.drift__amp>0))
+                set([xi.hname xi.hval],'enable',brick.onoff(X.drift__amp>0))
             end
             % discretization parameters that are really needed
             if strcmp(flag,'est')
                 xi = xx(strcmp(names,'nb'));
-                set([xi.hname xi.hval],'enable',onoff(X.drift>0))
+                set([xi.hname xi.hval],'enable',brick.onoff(X.drift>0))
                 xi = xx(strcmp(names,'np'));
-                set([xi.hname xi.hval],'enable',onoff(X.ton>0))
+                set([xi.hname xi.hval],'enable',brick.onoff(X.ton>0))
             end
         end
     end
@@ -342,12 +342,12 @@ classdef spk_demoGUI < hgsetget
             p = G.pest;
             
             % estimate
-            c = fn_watch(G.grob.hf,'startnow');
+            c = brick.watch(G.grob.hf,'startnow');
             [G.res.spikest, G.res.fit, G.res.drift] = spk_est(G.data.calcium,p);
             
             % display
             if ~ishandle(G.grob.display) % result figure was closed
-                G.grob.display = fn_figure('MLspike demo - Result');
+                G.grob.display = brick.figure('MLspike demo - Result');
                 set(G.grob.display,'numbertitle','off')
             end
             hf = G.grob.display; clf(hf)

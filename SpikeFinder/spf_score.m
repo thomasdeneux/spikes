@@ -9,7 +9,7 @@ if ~isvector(xest)
 end
     
 ntc = find(~isnan(xtrue),1,'last');
-xtrue = fn_bin(xtrue(1:ntc),4);
-xest = fn_bin(xest(1:ntc),4);
+xtrue = brick.bin(xtrue(1:ntc),4);
+xest = brick.bin(xest(1:ntc),4);
 c = corrcoef(xest,xtrue);
 score = c(1,2);

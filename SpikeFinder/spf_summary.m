@@ -34,7 +34,7 @@ else
     dataflag(dataflag==2) = 92;
     files = cell(1,n);
     for i=1:n
-        files{i} = row(dir(fullfile(dsave,sprintf('*-dataset%i.mat',dataflag(i)))));
+        files{i} = brick.row(dir(fullfile(dsave,sprintf('*-dataset%i.mat',dataflag(i)))));
     end
     files = cell2mat(files);
     clear dataflag
@@ -44,7 +44,7 @@ files = {files.name};
 summary = struct('dataflag',[],'res',[]);
 for kf = 1:length(files)
     
-    [method dataflag] = fn_regexptokens(files{kf},'(.*)-dataset(\d*).mat');
+    [method dataflag] = brick.regexptokens(files{kf},'(.*)-dataset(\d*).mat');
     if ~doautosigma
         methodflag = str2double(method(end-2:end));
         [~, defpar] = spf_parameters(methodflag);
@@ -54,7 +54,7 @@ for kf = 1:length(files)
         end
     end
     dataflag = str2double(dataflag);
-    res = fn_loadvar(fullfile(dsave,files{kf}),'res');
+    res = brick.loadvar(fullfile(dsave,files{kf}),'res');
     [score, idx] = max([res.score]);
     if isempty(score), continue, end
     isrunning = (now-res(end).date)<0.02;
@@ -67,7 +67,7 @@ for kf = 1:length(files)
     end
     
 end
-summary(fn_isemptyc({summary.dataflag})) = [];
+summary(brick.isemptyc({summary.dataflag})) = [];
 datanum = [summary.dataflag];
 datanum(datanum==92) = 2;
 idx = (datanum>=21) & (datanum<=25); datanum(idx) = datanum(idx)-20;
@@ -75,7 +75,7 @@ if isempty(summary)
     if doout, disp 'no results found yet', end
     return
 end
-[summary.datanum] = dealc(datanum);
+[summary.datanum] = brick.dealc(datanum);
 
 [datanum ord] = sort(datanum); %#ok<ASGLU>
 summary = summary(ord);
@@ -93,8 +93,8 @@ for k = 1:length(summary)
         % display
         for i=1:length(resk)
             reski = resk(i);
-            str = fn_switch(i==1,sprintf('Dataset %.2i: ',sk.dataflag),repmat(' ',1,12));
-            runflag = fn_switch(reski.running,' [running]','');
+            str = brick.switch(i==1,sprintf('Dataset %.2i: ',sk.dataflag),repmat(' ',1,12));
+            runflag = brick.switch(reski.running,' [running]','');
             fprintf('%s%.5f using %s%s (parset=',str,reski.score,reski.method,runflag)
             fprintf('%.4f ',reski.parset)
             fprintf('\b, smooth=%.4f, delay=%.4f)\n',reski.smooth,reski.delay)

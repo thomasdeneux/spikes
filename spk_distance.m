@@ -34,7 +34,7 @@ else
     for i=3:nargin
         a = varargin{i};
         if isstruct(a)
-            cost = fn_structmerge(defaultcost,a);
+            cost = brick.structmerge(defaultcost,a);
         elseif strcmp(a,'basic')
             dobasic = true;
         else
@@ -90,18 +90,18 @@ if iscell(tli)
     return
 end
 
-tli = row(tli); tlj = row(tlj);
+tli = brick.row(tli); tlj = brick.row(tlj);
 nspi=length(tli); % start spikes
 nspj=length(tlj); % target spikes
 
 % which estimated (target) spikes are isolated or not
-timedistances = abs(fn_subtract(row(tlj),column(tli)));
+timedistances = abs(brick.subtract(brick.row(tlj),brick.column(tli)));
 neighbors = (timedistances<cost.timeburst);
 nonisolatedj = sum(neighbors,1)>=cost.nneighbors;
 falsepcost = nonisolatedj*cost.flsp1 + ~nonisolatedj*cost.flsp0;
 
 % which real (start) spikes are isolated or not
-timedistances = abs(fn_subtract(tli(:)',tli(:)));
+timedistances = abs(brick.subtract(tli(:)',tli(:)));
 neighbors = (timedistances<cost.timeburst);
 nonisolatedi = sum(neighbors,1)>=cost.nneighbors;
 misscost = nonisolatedi*cost.miss1 + ~nonisolatedi*cost.miss0;
@@ -133,7 +133,7 @@ costbuild(1,:) = [0 cumsum(falsepcost)];
 %    end
 % end
 
-timedistances = abs(fn_subtract(tli(:),tlj(:)'));
+timedistances = abs(brick.subtract(tli(:),tlj(:)'));
 shiftcosts = shiftcost(timedistances,cost);
 okdistance = (timedistances<cost.timedelay);
 if nspi && nspj

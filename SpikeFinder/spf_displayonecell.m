@@ -35,7 +35,7 @@ for i=1:nsplit
     if dorealspikes
         if strcmp(spikemode,'count')
             spikesplit{i} = spikes(1+round((i-1)*ntspikes/nsplit):round(i*ntspikes/nsplit));
-            spikesplit{i} = fn_timevector(spikesplit{i},dtspikes);
+            spikesplit{i} = brick.timevector(spikesplit{i},dtspikes);
         else
             Tfrac = ntcalcium*dtcalcium/nsplit;
             spikesplit{i} = spikes(spikes>=(i-1)*Tfrac & spikes<=i*Tfrac) - (i-1)*Tfrac;
@@ -46,10 +46,10 @@ for i=1:nsplit
         if doMAP
             if length(spikecountest)==ntspikes 
                 spikestsplit{i} = spikecountest(1+round((i-1)*ntspikes/nsplit):round(i*ntspikes/nsplit));
-                spikestsplit{i} = fn_timevector(spikestsplit{i},dtspikes); 
+                spikestsplit{i} = brick.timevector(spikestsplit{i},dtspikes);
             elseif length(spikecountest)==length(x.calcium)
                 spikestsplit{i} = spikecountest(1+round((i-1)*ntcalcium/nsplit):round(i*ntcalcium/nsplit));
-                spikestsplit{i} = fn_timevector(spikestsplit{i},dtcalcium);
+                spikestsplit{i} = brick.timevector(spikestsplit{i},dtcalcium);
             else
                 error 'length mismatch'
             end
@@ -65,7 +65,7 @@ for i=1:nsplit
         driftsplit{i} = x.drift(1+round((i-1)*ntcalcium/nsplit):round(i*ntcalcium/nsplit));
     end
 end
-rateflag = fn_switch(~doest || doMAP,{},{'rate'});
+rateflag = brick.switch(~doest || doMAP,{},{'rate'});
 if doest
     spk_display(dtcalcium,{spikesplit spikestsplit},{calciumsplit fitsplit driftsplit},'ncol',1,rateflag{:})
 else

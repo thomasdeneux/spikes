@@ -48,12 +48,12 @@ ndata = numel(spikes);
 for itest=1:ndata, F{itest} = double(F{itest}); end
 % calibration parameters
 if nargin>=3 && isstruct(varargin{1})
-    pcal = fn_structmerge(defaultpar,varargin{1},'skip');
+    pcal = brick.structmerge(defaultpar,varargin{1},'skip');
 else
     pcal = defaultpar(varargin{:});
 end
 % split F into cell and global calcium signals
-if isvector(F) && ~pcal.doglobal, F = row(F); end
+if isvector(F) && ~pcal.doglobal, F = brick.row(F); end
 if any(size(F)~=[(1+pcal.doglobal) ndata])
     error 'spike data and fluorescence data do not match'
 end
@@ -70,7 +70,7 @@ if noest, pest = varargin{2}; end
 % forward parameters
 pfwd = spk_calcium('par');
 pfwd.dt = pcal.dt;
-nt = fn_map(@length,F);
+nt = brick.map(@length,F);
 pfwd.T = nt.*pcal.dt;
 
 % estimation
@@ -78,12 +78,12 @@ if ~noest
     variables = {'a' 'tau' 'saturation' 'delay' 'contamination' 'p2' 'p3' 'hill' 'c0' 'ton'};
     doest = [true true pcal.dosaturation pcal.dodelay pcal.doglobal pcal.dononlinear pcal.dononlinear pcal.dohill pcal.doc0 pcal.doton];
     if ~strcmp(pcal.display,'none')
-        disp(fn_strcat(variables(doest),'CALIBRATION: estimate ',', ',''))
+        disp(brick.strcat(variables(doest),'CALIBRATION: estimate ',', ',''))
     end
     
     opt = optimset('Algorithm','interior-point', ... note that previous choice of 'active-set' was sometimes getting stuck in "not even local minima"!!
         'maxfunevals',10000,'tolx',1e-20,'tolfun',1e-5, ...
-        'display',fn_switch(pcal.display,'debug','iter',pcal.display)); %,'PlotFcns',{@optimplotx,@optimplotfval,@optimplotstepsize,@optimplotconstrviolation});
+        'display',brick.switch(pcal.display,'debug','iter',pcal.display)); %,'PlotFcns',{@optimplotx,@optimplotfval,@optimplotstepsize,@optimplotconstrviolation});
     % parameters: a, tau, saturation, delay, global contribution, p2, p3, hill, c0, ton
     pstart = [.1 1 -2 0 .5 0 0 1 .5 .005]; % we estimate the log of the saturation
     LB = [0 .1 -4 -.05 0 -5 -5 .5 0 0 0];
@@ -123,7 +123,7 @@ function [e fit drift F] = energycalib1(p,spikes,F,cglobal,pfwd0,pcal)
 
 % parameters and sizes
 ndata = numel(spikes);
-nt = fn_map(@length,F,'array');
+nt = brick.map(@length,F,'array');
 pfwd0.a = p(1);
 pfwd0.tau = p(2);
 kp=2;
@@ -135,7 +135,7 @@ else
 end
 if pcal.dodelay
     kp=kp+1;
-    spikes = fn_map(@(u)u+p(kp),spikes);
+    spikes = brick.map(@(u)u+p(kp),spikes);
 end
 if pcal.doglobal
     kp=kp+1;
@@ -170,12 +170,12 @@ for i=1:ndata
     elseif strcmp(pcal.tdrift,'trend')
         drift{i} = base - detrend(base);
     else
-        drift{i} = fn_filt(base,pcal.tdrift/pfwd0.dt(i),'lmd',1); 
+        drift{i} = brick.filt(base,pcal.tdrift/pfwd0.dt(i),'lmd',1);
     end
     fit{i} = drift{i}.*Fpred0{i};
     dif{i} = F{i}-fit{i};
     if pcal.tsmooth % smooth the difference 
-        dif{i} = fn_filt(dif{i},pcal.tsmooth/pfwd0.dt(i),'lmd',1);
+        dif{i} = brick.filt(dif{i},pcal.tsmooth/pfwd0.dt(i),'lmd',1);
     end
 end
 
@@ -197,7 +197,7 @@ ndata = numel(F);
 nest = cell(s); Fest = cell(s); eval = zeros(s);
 for i=1:ndata
     [nest{i} Fest{i}] = tps_mlspikes(F{i},par);
-    spikeest = fn_timevector(nest{i},par.dt,'times');
+    spikeest = brick.timevector(nest{i},par.dt,'times');
     eval(i) = spk_distance(spikereal{i},spikeest,cost);
 end
 e = sum(eval);
@@ -257,7 +257,7 @@ while i<length(varargin)
         end
     end
 end
-pcal = fn_structmerge(pcal,p,'strict','recursive');
+pcal = brick.structmerge(pcal,p,'strict','recursive');
 
 
 %-------------------------------------------------------------------------%

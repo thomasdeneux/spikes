@@ -34,15 +34,15 @@ else
         par = defaultpar;
         par.dt = par;
     else
-        par = fn_structmerge(defaultpar,par);
+        par = brick.structmerge(defaultpar,par);
     end
     [n, fit, parest, ~, ~, drift] = tps_mlspikes(calcium,par); %#ok<*ASGLU>
     switch lower(par.algo.estimate)
         case 'map'
-            spk = fn_timevector(n,par.dt);
+            spk = brick.timevector(n,par.dt);
         case 'proba'
             spk = n;
         case {'sample' 'samples'}
-            spk = fn_timevector(n,par.dt);
+            spk = brick.timevector(n,par.dt);
     end
 end

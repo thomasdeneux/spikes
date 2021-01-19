@@ -111,10 +111,10 @@ switch mode
         dt = smoothtime/nsub;
         nt = ceil(T/dt);
         x = randn(nt+2*nsub,nrepeat);
-        vrate = fn_filt(x,nsub);
+        vrate = brick.filt(x,nsub);
         vrate = vrate(nsub+(1:nt),:);
         % calculate the std of every element in vrate
-        % note that fn_filt(.,nsub) achieves a low-pass with cut-off
+        % note that brick.filt(.,nsub) achieves a low-pass with cut-off
         % frequency 1/nsub by smoothing with a Gaussian kernel Gs of std 
         % s=nsub*HWHH/(2*pi), where HWHH is the half-width at half-height
         % of a Gaussian of std 1
@@ -148,7 +148,7 @@ switch mode
         nspike = (rand(nt1,nrepeat)<vrate*dt1);
         % get spike times, add a small jitter within each time bin
         for k = 1:nrepeat
-            spikesk = row(find(nspike(:,k))-1)*dt1;
+            spikesk = brick.row(find(nspike(:,k))-1)*dt1;
             spikes{k} = spikesk + dt1 * rand(size(spikesk));
         end
 end

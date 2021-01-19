@@ -7,9 +7,9 @@ dopar = (nargin>=2);
 % Default parameters
 defpar = tps_mlspikes('par');
 methodflagstr = num2str(methodflag);
-method = fn_switch(methodflagstr(1),{'1' '7'},'MAP',{'2' '4' '5' '6'},'proba','3','samples');
-nonlinearity = fn_switch(methodflagstr(1),{'1' '2' '3' '4' '7'},'saturation',{'5' '6'},'pnonlin');
-doautosigma = fn_switch(methodflagstr(1),{'1' '2' '3' '5'},false,{'4' '6' '7'},true);
+method = brick.switch(methodflagstr(1),{'1' '7'},'MAP',{'2' '4' '5' '6'},'proba','3','samples');
+nonlinearity = brick.switch(methodflagstr(1),{'1' '2' '3' '4' '7'},'saturation',{'5' '6'},'pnonlin');
+doautosigma = brick.switch(methodflagstr(1),{'1' '2' '3' '5'},false,{'4' '6' '7'},true);
 if doautosigma
     defpar.finetune.autosigmasettings = spk_autosigma('par');
 end
@@ -95,11 +95,11 @@ end
 if dopar
     switch nonlinearity
         case 'saturation'
-            [a tau noisepar drift] = dealc(10.^parset([1 2 4 5]));
+            [a tau noisepar drift] = brick.dealc(10.^parset([1 2 4 5]));
             saturation = parset(3);
             pnonlin = [];
         case 'pnonlin'
-            [a tau noisepar drift] = dealc(10.^parset([1 2 5 6]));
+            [a tau noisepar drift] = brick.dealc(10.^parset([1 2 5 6]));
             saturation = 0;
             pnonlin = parset([3 4]);
     end

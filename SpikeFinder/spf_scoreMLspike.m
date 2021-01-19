@@ -53,16 +53,16 @@ resmodel = struct('parset',cell(1,0), ... % structure for saving scores
     'score',[],'out',[]);
 if ~exist(fsave,'file')
     res = resmodel;
-    fn_savevar(fsave,defpar,parsetnames,res)
+    brick.savevar(fsave,defpar,parsetnames,res)
 else
-    res = fn_loadvar(fsave,'res');
-    if ~isfield(res,'smooth'), res = fn_structmerge(resmodel,res,'strict'); end
+    res = brick.loadvar(fsave,'res');
+    if ~isfield(res,'smooth'), res = brick.structmerge(resmodel,res,'strict'); end
 end
 
 % Was this computation already performed and saved?
-kres = fn_find(parset,{res.parset});
+kres = brick.find(parset,{res.parset});
 if isempty(kres)
-    resk = fn_structinit(resmodel);
+    resk = brick.structinit(resmodel);
     clear res % res must be re-loaded before saving
 else
     out = res(kres).out;
@@ -89,9 +89,9 @@ if doparallel
         [spikecountest(:,i) fit(:,i) drift(:,i)] = spf_estimate(calcium(:,i),spikecount(:,i),pari,tbin,baselinerange);
     end
 else
-    fn_progress('tps_mlspike',ncell)
+    brick.progress('tps_mlspike',ncell)
     for i=1:ncell
-        fn_progress(i)
+        brick.progress(i)
         par.dt = dtcalcium(i);
         [spikecountest(:,i) fit(:,i) drift(:,i)] = spf_estimate(calcium(:,i),spikecount(:,i),par,tbin,baselinerange);
     end
@@ -114,26 +114,26 @@ else
 end
 resk.score = score;
 resk.out = 1-score;
-res = fn_loadvar(fsave,'res');
-if ~isfield(res,'smooth'), res = fn_structmerge(resmodel,res); end
+res = brick.loadvar(fsave,'res');
+if ~isfield(res,'smooth'), res = brick.structmerge(resmodel,res); end
 res(end+1) = resk;
 fprintf('\b -> score=%.10f\n',score)
 DOSAVE = eval('true');
 if DOSAVE
-    fn_savevar(fsave,res,'-APPEND')                 % save!
+    brick.savevar(fsave,res,'-APPEND')                 % save!
     fprintf('(saved at position %i)\n',length(res))
     
     % % Additional save to be sure we are not loosing samples
     % dsave = strrep(fsave,'.mat','-all');
     % if ~exist(dsave,'dir'), mkdir(dsave), end
-    % fn_savevar(fullfile(dsave,fn_hash(parset)),resk)
+    % brick.savevar(fullfile(dsave,brick.hash(parset)),resk)
     
     % Save also current estimate if it is the best
     if isscalar(res) || resk.out<min([res(1:end-1).out])
         disp 'New minimum encountered: save estimation result'
         best = struct('parset',parset,'smooth',smooth,'delay',delay, ...
             'spikecountest',spikecountest,'spikecountadj',spikecountadj,'fit',fit,'drift',drift,'score',score,'out',1-score);
-        fn_savevar(fsave,best,'-APPEND')
+        brick.savevar(fsave,best,'-APPEND')
     end
 else
     disp 'NOT SAVING!'

@@ -8,16 +8,16 @@ if nargin>=1 && strcmp(dataflag,'all')
 else
     if nargin==0
         dsave = spf_folders('precomp');
-        fn_getfile('REP',dsave);
-        fsave = fn_getfile('*.mat','Select result file to display');
+        brick.getfile('REP',dsave);
+        fsave = brick.getfile('*.mat','Select result file to display');
         if isequal(fsave,0), return, end
-        [methodflagstr dataflagstr] = fn_regexptokens(fn_fileparts(fsave,'base'),'^.*(\d{3})-dataset(\d)*$');
+        [methodflagstr dataflagstr] = brick.regexptokens(brick.fileparts(fsave,'base'),'^.*(\d{3})-dataset(\d)*$');
         dataflag = str2double(dataflagstr); methodflag = str2double(methodflagstr);
     end
     x = loadResult('train',dataflag,methodflag,true);
 end
 
-fn_review(x,@(xi)spf_displayonecell(xi))
+brick.review(x,@(xi)spf_displayonecell(xi))
 
 %---
 function x = loadAllResults()
@@ -38,7 +38,7 @@ end
 
 % put together
 x = x([1:10 11:2:19]);
-n = max(fn_itemlengths(x));
+n = max(brick.itemlengths(x));
 for i=1:15
     if length(x{i})<n, x{i}(n).setflag = []; end
 end
@@ -123,13 +123,13 @@ for i=1:nsplit
 end
 if strcmp(x.method,'MAP')
     for i=1:nsplit
-        if dotrain, spikesplit{i} = fn_timevector(spikesplit{i},dtspikes); end
-        spikestsplit{i} = fn_timevector(spikestsplit{i},dtspikes);
+        if dotrain, spikesplit{i} = brick.timevector(spikesplit{i},dtspikes); end
+        spikestsplit{i} = brick.timevector(spikestsplit{i},dtspikes);
     end
     rateflag = {};
 else
     for i=1:nsplit
-        spikesplit{i} = fn_timevector(spikesplit{i},dtspikes);
+        spikesplit{i} = brick.timevector(spikesplit{i},dtspikes);
     end
     rateflag = {'rate'};
 end

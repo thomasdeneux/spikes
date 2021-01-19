@@ -4,10 +4,10 @@ function spf_displayEvalPoints(dataflag,methodflag,varargin)
 % Input
 dsave = spf_folders('precomp');
 if nargin==0
-    fn_getfile('REP',dsave);
-    fsave = fn_getfile('*.mat','Select result file to display');
+    brick.getfile('REP',dsave);
+    fsave = brick.getfile('*.mat','Select result file to display');
     if isequal(fsave,0), return, end
-    [methodflagstr dataflagstr] = fn_regexptokens(fn_fileparts(fsave,'base'),'^.*(\d{3})-dataset(\d)*$');
+    [methodflagstr dataflagstr] = brick.regexptokens(brick.fileparts(fsave,'base'),'^.*(\d{3})-dataset(\d)*$');
     dataflag = str2double(dataflagstr); methodflag = str2double(methodflagstr);
 else
     methodflagstr = num2str(methodflag);
@@ -45,7 +45,7 @@ testedpar = cat(1,res.parset);
 score = cat(1,res.score);
 neval = length(score);
 m = max(score(find(~isnan(score),1,'first')),(min(score)+max(score))/2);
-col = fn_clip(score,[m max(score)],mapgeog(256));
+col = brick.clip(score,[m max(score)],mapgeog(256));
 
 %%
 [LB UB] = spf_getrange(dataflag,methodflag);
@@ -53,11 +53,11 @@ range = [LB; UB];
 
 %%
 origins = {res.origin};
-idxsumo = ~fn_isemptyc(strfind(origins,'fetchEvaluatedPoints'));
+idxsumo = ~brick.isemptyc(strfind(origins,'fetchEvaluatedPoints'));
 
 %% Parameter space
 bgcol = [1 1 1]*.6;
-fn_figure('Show Points','color',bgcol,'tag','Show Points')
+brick.figure('Show Points','color',bgcol,'tag','Show Points')
 
 ok = true(1,neval);
 if sumoonly
@@ -66,7 +66,7 @@ elseif fmincononly
     % keep only last evaluation of each step
     idxfmincon = find(~idxsumo);
     orig = origins(idxfmincon);
-    isderiv = ~fn_isemptyc(strfind(orig,'finDiffEvalAndChkErr'));
+    isderiv = ~brick.isemptyc(strfind(orig,'finDiffEvalAndChkErr'));
     ok1 = (~isderiv & isderiv([2:end end]));
     ok(:) = false; ok(idxfmincon(ok1)) = true;
 end
@@ -107,12 +107,12 @@ fprintf(')\n-> score=%f\n\n',best.score)
 %% Scores
 
 
-fn_figure('Scores')
-plot([res(idxsumo).score],'color',fn_colorset('newmatlab',1)/2+1/2)
+brick.figure('Scores')
+plot([res(idxsumo).score],'color',brick.colorset('newmatlab',1)/2+1/2)
 hold on
-plot([res(~idxsumo).score],'color',fn_colorset('newmatlab',2)/2+1/2)
-h1=plot(cummax([res(idxsumo).score]),'color',fn_colorset('newmatlab',1),'linewidth',1);
-h2=plot(cummax([res(~idxsumo).score]),'color',fn_colorset('newmatlab',2),'linewidth',1);
+plot([res(~idxsumo).score],'color',brick.colorset('newmatlab',2)/2+1/2)
+h1=plot(cummax([res(idxsumo).score]),'color',brick.colorset('newmatlab',1),'linewidth',1);
+h2=plot(cummax([res(~idxsumo).score]),'color',brick.colorset('newmatlab',2),'linewidth',1);
 hold off
 xlabel '# eval', ylabel 'score'
 if any(idxsumo), legend([h1 h2],'SUMO','fmincon','location','SouthEast'), else legend(h2,'fmincon','location','SouthEast'), end
@@ -123,10 +123,10 @@ function zoomfun(ha,i0,j0,npar,range0)
 hf = get(ha,'parent');
 switch get(hf,'SelectionType')
     case 'normal'
-        rect = fn_mouse('rectax-');
+        rect = brick.mouse('rectax-');
     case 'alt'
         axis tight
-        rect = row(range0(:,[i0 j0]));
+        rect = brick.row(range0(:,[i0 j0]));
     otherwise
         return
 end

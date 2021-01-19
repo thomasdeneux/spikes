@@ -42,13 +42,13 @@ if dobatch
                     fminopt{k} = num2str(a); %#ok<AGROW>
                 end
             end
-            command = [command ',{' fn_strcat(fminopt,',') '}']; %#ok<AGROW>
+            command = [command ',{' brick.strcat(fminopt,',') '}']; %#ok<AGROW>
         end
         command(end+1) = ')'; %#ok<AGROW>
         % launch batch job
         batch(command,'AutoAttachFiles',false, ...
             'AdditionalPaths',fileparts(which('spf_train')),poolopt{:});
-        fn_singular('Batch started for dataset ',dataflag(i))
+        brick.singular('Batch started for dataset ',dataflag(i))
     end
     return
 end
@@ -58,7 +58,7 @@ dsave = spf_folders('precomp');
 if ~exist(dsave,'dir'), mkdir(dsave), end
 methodflagstr = num2str(methodflag);
 [method defpar parsetnames] = spf_parameters(methodflag);    
-nonlinearity = fn_switch(parsetnames{3},'saturation','saturation','p2','pnonlin');
+nonlinearity = brick.switch(parsetnames{3},'saturation','saturation','p2','pnonlin');
 doautosigma = isstruct(defpar.finetune.autosigmasettings);
 fsave = fullfile(dsave,sprintf('%s%s-dataset%i.mat',method,methodflagstr,dataflag));
 fprintf('Method %s%s - Dataset %i\n',method,methodflagstr,dataflag)
@@ -74,7 +74,7 @@ pstart = [];
 % (existing results for this method?)
 if exist(fsave,'file') && ~fromscratch
     % Select samples within range
-    res = fn_loadvar(fsave,'res');
+    res = brick.loadvar(fsave,'res');
     testedpar = cat(1,res.parset); if isempty(testedpar), testedpar = zeros(0,ninput); end
     ok = all(bsxfun(@ge,testedpar+1e-10,LB) ...
         & bsxfun(@le,testedpar-1e-10,UB),2);
@@ -114,7 +114,7 @@ end
 fbug = fullfile(dsave,'score mean instead of median',sprintf('%s%s-dataset%i.mat',method,methodflagstr,dataflag));
 if isempty(pstart) && exist(fbug,'file') && ~fromscratch
     try
-        best = fn_loadvar(fbug,'best');
+        best = brick.loadvar(fbug,'best');
         pstart = best.parset;
         disp 'found starting point from previous estimation with ''mean rather than median'' bug'
     catch
@@ -126,11 +126,11 @@ if isempty(pstart) && ~fromscratch
     if isempty(res)
         ord = [];
     else
-        methodstested = char(fn_map({res.method},@(x)x(end-2:end)));
+        methodstested = char(brick.map({res.method},@(x)x(end-2:end)));
         samealgo = (methodstested(:,1)==methodflag(1));
-        [~, ord] = sortrows([column(samealgo) cat(1,res.score)]); % take preferentially with the same algo, then maximal score
+        [~, ord] = sortrows([brick.column(samealgo) cat(1,res.score)]); % take preferentially with the same algo, then maximal score
     end
-    for idx=row(ord(end:-1:1))
+    for idx=brick.row(ord(end:-1:1))
         [~, ~, parsetnames2] = spf_parameters(methodstested(idx,:));
         if isequal(parsetnames2,parsetnames)
             disp(['found starting point from previous estimation with method ' methodstested(idx,:)])
@@ -145,7 +145,7 @@ if fromscratch || isempty(pstart)
     [dtcalcium calcium ~, spiketimes] = spf_getdata(dataflag);
     [~, ncell] = size(calcium);
     calcium = num2cell(calcium,1);
-    calcium = fn_map(calcium,@(x)1+x(1:find(x~=0,1,'last')));
+    calcium = brick.map(calcium,@(x)1+x(1:find(x~=0,1,'last')));
     % run a calibration !
     pcal = spk_calibration('par','dt',dtcalcium,'tdrift',15, ...
         'dosaturation',strcmp(nonlinearity,'saturation'), ...

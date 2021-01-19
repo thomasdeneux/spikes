@@ -8,7 +8,7 @@ ntcalcium = length(calcium);
 ntc = find(calcium~=0,1,'last');
 calcium = calcium+1; % note that calcium is expressed in DF/F, while we need F or F/F0
 % (cut and bin)
-calciumbin = fn_bin(calcium(1:ntc),[tbin 1]);
+calciumbin = brick.bin(calcium(1:ntc),[tbin 1]);
 % (estimate)
 dtcalcium = par.dt;
 dtspikes = .01;
@@ -22,9 +22,9 @@ end
 % (unbin and uncut)
 if tbin>1
     if dtcalcium~=dtspikes, error 'not sure that tbin>1 compatible with dtcalcium~=dtspikes', end
-    spikecountest = fn_enlarge(spikecountest,ntc,0);
-    fit = fn_enlarge(fit,ntc);
-    drift = fn_enlarge(drift,ntc);
+    spikecountest = brick.enlarge(spikecountest,ntc,0);
+    fit = brick.enlarge(fit,ntc);
+    drift = brick.enlarge(drift,ntc);
 end
 if ntc<ntcalcium
     spikecountest(ntc+1:length(calcium),:) = 0;
@@ -36,8 +36,8 @@ spikecountest_dtcalcium = spikecountest;
 if dtcalcium~=dtspikes
     switch par.algo.estimate
         case 'MAP'
-            spiketimes = fn_timevector(spikecountest_dtcalcium,dtcalcium);
-            spikecountest = fn_timevector(spiketimes,(0:size(spikecount,1)-1)*dtspikes);
+            spiketimes = brick.timevector(spikecountest_dtcalcium,dtcalcium);
+            spikecountest = brick.timevector(spiketimes,(0:size(spikecount,1)-1)*dtspikes);
         otherwise
             spikecountest = interp1((0:ntcalcium-1)*dtcalcium,spikecountest_dtcalcium,(0:size(spikecount,1)-1)*dtspikes);
     end
@@ -50,7 +50,7 @@ end
 
 % smooth+delay?
 if nargin>=6
-    spikecountadj = fn_filt(spikecountest,smooth/dtspikes,'lk');
+    spikecountadj = brick.filt(spikecountest,smooth/dtspikes,'lk');
     k = round(delay/dtspikes);
     if k<0
         spikecountadj = [zeros(-k,1); spikecountadj(1:end+k)];
@@ -62,6 +62,6 @@ else
 end
 
 % display (split it to multiple rows)
-fn_figure('SPF TRAIN')
+brick.figure('SPF TRAIN')
 spf_displayonecell(struct('method',par.algo.estimate,'dtcalcium',dtcalcium,'calcium',calcium, ...
     'spikecount',spikecount,'spikecountest',spikecountest_dtcalcium,'fit',fit,'drift',drift))

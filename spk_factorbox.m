@@ -6,7 +6,7 @@
 % 
 % The simulation on the right is characterized by a spiking rate of 1Hz,
 % low photonic noise (RMS = 0.01) and small baseline drift/fluctuations. It
-% serves as “starting point”. In the following simulations, various factors
+% serves as ï¿½starting pointï¿½. In the following simulations, various factors
 % will be varied, one at a time, whereas the other simulation parameters
 % stay unchanged (unless specified otherwise).
 
@@ -41,7 +41,7 @@ par = tps_mlspikes('par',dt,'saturation',.1, ...
 % display
 clf reset
 set(gcf,'color','w')
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 subplot(121)
 ylim = [.8 1.3];
 spk_display(dt,{spikes spikest},{calcium fit drift},ylim,'factorbox')
@@ -137,7 +137,7 @@ spk_display(dt,{spikes spikest1},{calcium1 fit1 drift1},ylim,'factorbox', ...
 % estimation quality rapidly deteriorates.
 
 figure(gcf)
-fn_setfigsize(gcf,[1200,600])
+brick.setfigsize(gcf,[1200,600])
 
 rates = [5 20];
 type = {'vary-rate' 'fix-rate' 'periodic'};
@@ -201,7 +201,7 @@ for j = 1:length(type)
 % impaired.
 
 figure(gcf)
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 ylim = [0.7 1.35];
 plotnum = 120;
 pcal1 = pcal;
@@ -242,7 +242,7 @@ end
 
 
 figure(gcf), clf
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 
 dts = [.02 .08 .08];        % original sampling rate (50Hz) and 4x slower (200Hz)
 %sigmas = [1 .5 1]*.04;    % "reasonable" noise SNR (.035) or 2x less (.0175)
@@ -254,7 +254,7 @@ ha = [subplot(131) subplot(132) subplot(133)];
 p1 = get(ha(1),'pos'); p3 = get(ha(3),'pos');
 x0 = p1(1); x1 = p3(1)+p3(3); y0 = p1(2); h = p1(4);
 gap = .03; w = (x1-x0-2*gap)/3;
-fn_set(ha,'position',{[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]})
+brick.set(ha,'position',{[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]})
 
 
 
@@ -267,7 +267,7 @@ for i = 1:length(dts)
         pcal1.dt  = dts(1);
         pcal1.sigma = sigmas(1);
         calciumpadi = spk_calcium(spikespad,pcal1); calcium1 = calciumpadi(nt1+1:2*nt1);
-        calcium1 = fn_bin(calcium1,4);
+        calcium1 = brick.bin(calcium1,4);
     elseif i==3
         nt1 = T/dts(1);
         pcal1.dt  = dts(1);
@@ -308,7 +308,7 @@ end
 % transients leading to improved estimations (middle vs. right panel).
 
 figure(gcf), clf
-fn_setfigsize(gcf,[1200,320])
+brick.setfigsize(gcf,[1200,320])
 
 % spiketrain of neuron 1
 dt = .02;
@@ -354,7 +354,7 @@ for i=1:length(mixings)
     titl = sprintf(['Signal = %g%% correct + %g%% contamination\n' ...
         'Algorithm expects %g%%\\DeltaF/F transients (%s)'], ...
         round(100/(w(1)+1)), round(100*w(1)/(w(1)+1)), ...
-        par3.a*100,fn_switch(DOCHANGEA(i),'correct','too high'));
+        par3.a*100,brick.switch(DOCHANGEA(i),'correct','too high'));
     spk_display(dt,{spikes1 spikest1},{calcium1 fit1 drift1},ylim, ...
         'factorbox','toptitle',titl)
     hl = line(tt,(calcium_c{1}-1)*f1+1.35); uistack(hl,'bottom')
@@ -382,7 +382,7 @@ end
     rmsc=[1.00 1.03 0.58 0.55 0.33];
     stdc=[0.0088 0.01 0.0119 0.0126 0.0131]/35.947;
 
-    figure(gcf), clf, fn_setfigsize(gcf,540,433)
+    figure(gcf), clf, brick.setfigsize(gcf,540,433)
     yy=errorbar(navector,rmsv,stdv,'k-');set(yy,'linewidth',2);
     hold on
     zz=errorbar(navector,rmsc,stdc,'r-');set(zz,'linewidth',2);
@@ -400,7 +400,7 @@ end
 % The effects of recording depth can vary importantly between different
 % experimental conditions and depend on on tissue transparency, the
 % efficacy of scattered fluorescence collection, and the locality and
-% sparseness of the Ca probe’s distribution. In general, recording deep
+% sparseness of the Ca probeï¿½s distribution. In general, recording deep
 % inside scattering tissues reduces the signal (less ballistic excitation
 % photons reach the sample), thus demanding high laser power, and increases
 % contamination by other cells and/or the neuropil. This contamination
@@ -427,12 +427,12 @@ xspread = exp(-xxx.^2./(2*(xres^2+(tand(theta)*(zzz-z1)).^2)));
 r = .1+repmat(abs(xx(:)),[1 length(zz)]);
 xspread2d = r.*xspread;
 tmp = sum(xspread2d,1);
-xspread = fn_div(xspread,tmp);
-xspread2d = fn_div(xspread2d,tmp);
-F = fn_mult(zatten,xspread).^2;
+xspread = brick.div(xspread,tmp);
+xspread2d = brick.div(xspread2d,tmp);
+F = brick.mult(zatten,xspread).^2;
 
 % Display image of beam focusing inside tissue
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 colormap(jet(256))
 
 subplot(1,4,1:3)
@@ -465,7 +465,7 @@ clear par3 spikes_c spikespad_c calcium_c calciumpad_c fit_c drift_c
 % estimate spikes from calcium recordings. Their transient amplitude for
 % one spike directly influences the SNR; their rise and decay times
 % influence the temporal precision of the estimations and the ability to
-% follow high spiking rates – which can also be limited by saturation;
+% follow high spiking rates ï¿½ which can also be limited by saturation;
 % finally, the a priori knowledge on the exact values of these parameters
 % and their variability also influence the ability to perform
 % autocalibration: e.g., we still miss knowledge on the exact function
@@ -531,7 +531,7 @@ par6f.saturation = 0.00195;
 par6f.hill = 2.05;
 par6f.drift.parameter = 0.002;
 
-fn_setfigsize(gcf,[1200,400])
+brick.setfigsize(gcf,[1200,400])
 
 % spikes
 seed = 0;
@@ -583,13 +583,13 @@ for i=1:2 % loop over spiking rates
         
         % estimation (store result so that it will not be needed to repeat
         % the same calculation in the future)
-        H = fn_hash({calcium1,par6},8);
+        H = brick.hash({calcium1,par6},8);
         fsave = fullfile(savedir,[H '.mat']);
         if exist(fsave,'file')
-            [spikest fit drift] = fn_loadvar(fsave);
+            [spikest fit drift] = brick.loadvar(fsave);
         else
             [spikest fit drift] = spk_est(calcium1,par6);
-            fn_savevar(fsave,spikest,fit,drift)
+            brick.savevar(fsave,spikest,fit,drift)
         end
         
         % display
@@ -630,15 +630,15 @@ end
 % increasing the number of  misses (right).
 
 figure(gcf), clf
-fn_setfigsize(gcf,[1200,400])
+brick.setfigsize(gcf,[1200,400])
 
 % decrease the gap between the subplots
 ha = [subplot(231) subplot(232) subplot(233); subplot(234) subplot(235) subplot(236)];
 p1 = get(ha(1,1),'pos'); p3 = get(ha(1,3),'pos'); p4 = get(ha(2,1),'pos');
 x0 = p1(1); x1 = p3(1)+p3(3); y0 = p1(2); h = p1(4); y1 = p4(2);
 gap = .03; w = (x1-x0-2*gap)/3;
-fn_set(column(ha),'position', ...
-    column({[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]; ...
+brick.set(brick.column(ha),'position', ...
+    brick.column({[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]; ...
     [x0 y1 w h] [x0+w+gap y1 w h] [x0+2*w+2*gap y1 w h]}))
 
 
@@ -683,14 +683,14 @@ end
 % (right).
 
 figure(gcf), clf
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 
 % decrease the gap between the subplots
 ha = [subplot(131) subplot(132) subplot(133)];
 p1 = get(ha(1),'pos'); p3 = get(ha(3),'pos');
 x0 = p1(1); x1 = p3(1)+p3(3); y0 = p1(2); h = .65;
 gap = .03; w = (x1-x0-2*gap)/3;
-fn_set(ha,'position',{[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]})
+brick.set(ha,'position',{[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]})
 
 ylim = [.7 1.35];
 whitenoise = [true true false];
@@ -713,7 +713,7 @@ for i = 1:ncol
     else % correlated (i.e. band-passed) noise
         freqs = [.1 20]; % white noise will be filtered between these 2 frequencies
         %noise = simul_noiseequalizer(nt,dt,freqs,1);
-        noise = fn_filt(randn(nt,1)*rmsi(i),1./fliplr(freqs)/dt,'b');
+        noise = brick.filt(randn(nt,1)*rmsi(i),1./fliplr(freqs)/dt,'b');
         pcal1.sigma = 0;
         rng(seed,'twister');
         calciumpad1 = spk_calcium(spikespad1,pcal1);
@@ -741,15 +741,15 @@ end
 
 
 figure(gcf), clf
-fn_setfigsize(gcf,[1200,400])
+brick.setfigsize(gcf,[1200,400])
 
 % decrease the gap between the subplots
 ha = [subplot(231) subplot(232) subplot(233); subplot(234) subplot(235) subplot(236)];
 p1 = get(ha(1,1),'pos'); p3 = get(ha(1,3),'pos'); p4 = get(ha(2,1),'pos');
 x0 = p1(1); x1 = p3(1)+p3(3); y0 = p1(2); h = p1(4); y1 = p4(2);
 gap = .03; w = (x1-x0-2*gap)/3;
-fn_set(column(ha),'position', ...
-    column({[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]; ...
+brick.set(brick.column(ha),'position', ...
+    brick.column({[x0 y0 w h] [x0+w+gap y0 w h] [x0+2*w+2*gap y0 w h]; ...
     [x0 y1 w h] [x0+w+gap y1 w h] [x0+2*w+2*gap y1 w h]}))
 
 rate1 = 1;
@@ -781,7 +781,7 @@ for i = 1:nsigma
 end
 
 %% III/3) A priori spiking rate: parameter 'spikerate'
-% Increasing parameter spikerate increases the algorithm’s tendency to
+% Increasing parameter spikerate increases the algorithmï¿½s tendency to
 % assign spikes (i.e. decrease misses but increase false detections). Note
 % that the optimal value for spikerate is not necessarily the true spike
 % rate. Note also that the 3 parameters sigma, drift and spikerate together
@@ -825,10 +825,10 @@ spikes1 = spk_gentrain(rate,T,'bursty');
 spikespad1 = [spk_gentrain(rate,T,'bursty') spikes1+T];
 
 %% IV/1) Noise level
-% The same factors that affect MLspike’s estimations affect also the
+% The same factors that affect MLspikeï¿½s estimations affect also the
 % autocalibration. Below we show that, e.g., different types of noises
 % affect autocalibration differently: slow drifts (second row) have only
-% little effect, as opposed to “worst band” (0.1-3Hz) noises, which affects
+% little effect, as opposed to ï¿½worst bandï¿½ (0.1-3Hz) noises, which affects
 % autocalibration critically.. 
 % For each estimation, purple arrows indicate the events detected by the
 % autocalibration, their amplitude (?F/F in %) and the number of spikes
@@ -841,7 +841,7 @@ spikespad1 = [spk_gentrain(rate,T,'bursty') spikes1+T];
 %% IV/1.1) Photonic noise
 
 figure(gcf);
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 
 ylim = [.65 1.65];
 
@@ -877,7 +877,7 @@ end
 %% IV/1.2) Low frequency noises (0.001Hz - 0.1 Hz)
 
 figure(gcf);
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 ylim = [.65 1.65];
 
 plotnum=120;
@@ -923,7 +923,7 @@ end
 %% IV/1.3) "Worst band" noise
 
 figure(gcf)
-fn_setfigsize(gcf,[1200,220])
+brick.setfigsize(gcf,[1200,220])
 ylim = [0.65 1.65];
 
 rmss = [0.01 0.02];
@@ -982,14 +982,14 @@ sigmas1 = 0.04;
 
 % display
 figure(gcf)
-fn_setfigsize(gcf,[1200,250])
+brick.setfigsize(gcf,[1200,250])
 
 clf, p = get(axes,'pos');
 w1 = p(3)*.9*(T2(1)/sum(T2)); w2 = p(3)*.9*(T2(2)/sum(T2)); h = .75;
 clf, ha = [axes('pos',[p(1:2) w1 h]) axes('pos',[p(1)+p(3)-w2 p(2) w2 h])];
 
 for seed1 = 20 %[2 3 10 20 23 27 30]
-    %     figure(seed1), fn_setfigsize(seed1,[1200,250]), set(seed1,'color','w')
+    %     figure(seed1), brick.setfigsize(seed1,[1200,250]), set(seed1,'color','w')
     %     clf, p = get(axes,'pos');
     %     w1 = p(3)*.9*(T2(1)/sum(T2)); w2 = p(3)*.9*(T2(2)/sum(T2)); h = .75;
     %     clf, ha = [axes('pos',[p(1:2) w1 h]) axes('pos',[p(1)+p(3)-w2 p(2) w2 h])];

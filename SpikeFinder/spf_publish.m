@@ -18,7 +18,7 @@ res = spf_summary(dataflag);
 if ~doautosigma
     % remove estimations with auto-sigma, i.e. with methodflag starting
     % with 4 or 6
-    ok = fn_isemptyc(regexp({res.method},'proba(4|6)'));
+    ok = brick.isemptyc(regexp({res.method},'proba(4|6)'));
     res = res(ok);
 end
 res = res(1); % keep only info about the best estimation
@@ -30,7 +30,7 @@ fprintf('Publishing results: Dataset %i - Method %i\n',dataflag,methodflag)
 dsave = spf_folders('precomp');
 method = spf_parameters(methodflag);    
 fsave = fullfile(dsave,sprintf('%s%i-dataset%i.mat',method,methodflag,dataflag));
-best = fn_loadvar(fsave,'best');
+best = brick.loadvar(fsave,'best');
 if ~isequal(best.parset,res.parset), error 'parameter set mismatch', end
 fprintf('Training data: score = %.4f\n',res.score)
 trainpred = best.spikecountadj;
@@ -54,9 +54,9 @@ parset = best.parset;
 [smooth delay] = deal(best.smooth,best.delay);
 par.display = 'count';
 [spikecountest spikecountadj fit drift] = deal(zeros(nt,ncell));
-fn_progress('tps_mlspike',ncell)
+brick.progress('tps_mlspike',ncell)
 for i=1:ncell
-    fn_progress(i)
+    brick.progress(i)
     par.dt = dtcalcium(i);
     [spikecountest(:,i) fit(:,i) drift(:,i) spikecountadj(:,i)] = spf_estimate(calcium(:,i),[],par,tbin,baselinerange,smooth,delay);
 end
@@ -69,5 +69,5 @@ csvwrite(fpred, [0:ncell-1; spikecountadj]); % don't forget the header row
 dsave = spf_folders('testres');
 if ~exist(dsave,'dir'), mkdir(dsave), end
 fsave = fullfile(dsave,sprintf('testset%i.mat',datanum));
-fn_savevar(fsave,calcium,methodflag,parset,par,tbin,smooth,delay,spikecountest,spikecountadj,fit,drift)
+brick.savevar(fsave,calcium,methodflag,parset,par,tbin,smooth,delay,spikecountest,spikecountadj,fit,drift)
 

@@ -47,13 +47,13 @@ end
 
 % Parameters
 if nargin==2 && isstruct(varargin{2})
-    par = fn_structmerge(defaultpar,varargin{2},'skip');
+    par = brick.structmerge(defaultpar,varargin{2},'skip');
 else
     par = defaultpar(varargin{2:end});
 end
 
 % Convert to spike times
-spikes = fn_timevector(spikes,par.dt,'times');
+spikes = brick.timevector(spikes,par.dt,'times');
 if ~iscell(spikes), spikes = {spikes}; end
 
 % T max
@@ -159,7 +159,7 @@ par.drift.effect = 'multiplicative';
 par.drift.parameter = 0;
 
 % user input
-par = fn_structmerge(par,p,'strict','recursive');
+par = brick.structmerge(par,p,'strict','recursive');
 
 %-------------------------------------------------------------------------%
 %                       FORWARD                                           %
@@ -194,7 +194,7 @@ switch par.type
         end
         % dynamic system
         decay = exp(-dt/tau);
-        ct = fn_switch(isempty(par.x0),0,par.x0);
+        ct = brick.switch(isempty(par.x0),0,par.x0);
         c = zeros(nt,1);
         for i=1:nt
             ct = ct*decay + increase(i);

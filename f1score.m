@@ -5,8 +5,8 @@ function ER = f1score(miss,falsep,nsptrue,nspest)
 if nargin==0, help f1score, return, end
 
 if nargin==4
-    miss = fn_float(miss)./fn_float(nsptrue);
-    falsep = fn_float(falsep)./fn_float(nspest);
+    miss = brick.float(miss)./brick.float(nsptrue);
+    falsep = brick.float(falsep)./brick.float(nspest);
 end
 
 miss(isnan(miss)) = 0; % no real spikes: no miss!

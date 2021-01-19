@@ -87,7 +87,7 @@ while k<length(varargin)
             case {'calciumevents' 'calciumeventsfull'}
                 k = k+1;
                 calciumevents = varargin{k};
-                calciumeventsmode = fn_switch(a,'calciumevents','simple','calciumeventsfull','full');
+                calciumeventsmode = brick.switch(a,'calciumevents','simple','calciumeventsfull','full');
             case 'displaymode'
                 k = k+1;
                 displaymode = varargin{k};
@@ -130,45 +130,45 @@ end
 % dataset
 if isnumeric(spikes) && (isvector(spikes) || isempty(spikes))
     % 1 data set, 1 spike train
-    if ~dorate, spikes = fn_timevector(spikes,dt,'times'); end % convert counts to spikes if necessary
+    if ~dorate, spikes = brick.timevector(spikes,dt,'times'); end % convert counts to spikes if necessary
     spikes = {{spikes}};
 elseif isnumeric(spikes) && size(spikes,2)<=2
     % 1 data set, multiple spike trains
-    if ~dorate, spikes = fn_timevector(spikes,dt,'times'); end % convert counts to spikes
+    if ~dorate, spikes = brick.timevector(spikes,dt,'times'); end % convert counts to spikes
     spikes = {spikes};
 elseif isnumeric(spikes) && size(spikes,2)>2
     % multiple data set, 1 spike train per set
-    if ~dorate, spikes = fn_timevector(spikes,dt,'times'); end % convert counts to spikes
-    spikes = fn_map(@(x){x},spikes,'cell');
+    if ~dorate, spikes = brick.timevector(spikes,dt,'times'); end % convert counts to spikes
+    spikes = brick.map(@(x){x},spikes,'cell');
 elseif ~iscell(spikes)
     error argument
 elseif isnumeric(spikes{1}) && all(size(spikes{1})>1)
     error 'not implemented yet'    % spike counts
 elseif isnumeric(spikes{1}) && numel(spikes)<=2 && isscalar(dt)
     % 1 data set, multiple spike trains
-    if ~dorate, spikes = fn_timevector(spikes,dt,'times'); end
+    if ~dorate, spikes = brick.timevector(spikes,dt,'times'); end
     spikes = {spikes};
 elseif isnumeric(spikes{1}) && (numel(spikes)>2 || ~isscalar(dt))
     % multiple data sets, 1 spike train per set
     ngraph = numel(spikes);
     if isscalar(dt), dt = repmat(dt,[1 ngraph]); end
-    if ~dorate, for i=1:ngraph, spikes{i} = fn_timevector(spikes{i},dt(i),'times'); end, end
+    if ~dorate, for i=1:ngraph, spikes{i} = brick.timevector(spikes{i},dt(i),'times'); end, end
     invertedorder = true;
-    spikes = fn_map(@(x){x},spikes,'cell');
+    spikes = brick.map(@(x){x},spikes,'cell');
 elseif iscell(spikes{1}) && numel(spikes)>2
     % multiple data sets, multiple trains per set, everything is ok
     ngraph = numel(spikes);
     if isscalar(dt), dt = repmat(dt,[1 ngraph]); end
-    for i=1:ngraph, spikes{i} = fn_timevector(spikes{i},dt(i),'times'); end
+    for i=1:ngraph, spikes{i} = brick.timevector(spikes{i},dt(i),'times'); end
 elseif iscell(spikes{1}) && numel(spikes)<=2
     % multiple data sets, multiple trains per set, but cell arrays are
     % nested in the inverted order
     nspk = numel(spikes);
-    if ~dorate, for i=1:nspk, spikes{i} = fn_timevector(spikes{i},dt,'times'); end, end
+    if ~dorate, for i=1:nspk, spikes{i} = brick.timevector(spikes{i},dt,'times'); end, end
     invertedorder = true;
     spikes = cat(3,spikes{:});      % cell array of vectors
     spikes = num2cell(spikes,3);    % cell array of cell arrays, in the correct nesting order
-    spikes = fn_map(@squeeze,spikes,'cell');
+    spikes = brick.map(@squeeze,spikes,'cell');
 end
 ngraph = numel(spikes);
 if nargin<3 || isempty(calcium)
@@ -180,7 +180,7 @@ elseif ngraph==1
             for i=1:length(calcium), calcium(i) = calcium{i}(:); end
         end
         if ~isscalar(calcium)
-            calcium = {fn_map(@(x)single(x(:)),calcium,'array')};
+            calcium = {brick.map(@(x)single(x(:)),calcium,'array')};
         end
     else
         if isvector(calcium)
@@ -197,9 +197,9 @@ elseif iscell(calcium{1})
     if numel(calcium)==ngraph && ~(numel(calcium{1})==ngraph && invertedorder)
         for i=1:ngraph, calcium{i} = [calcium{i}{:}]; end
     elseif numel(calcium{1})==ngraph
-        calcium = fn_map(@column,calcium);
+        calcium = brick.map(@brick.column,calcium);
         calcium = cat(2,calcium{:});
-        calcium = fn_map(@column,calcium);
+        calcium = brick.map(@brick.column,calcium);
         calcium = num2cell(calcium,2);
         for i=1:ngraph, calcium{i} = [calcium{i}{:}]; end
     else
@@ -215,7 +215,7 @@ else
         for i=1:numel(calcium), if iscell(calcium{i}), calcium{i} = [calcium{i}{:}]; end, end % convert cell arrays to numerical arrays if necessary
         calcium = cat(3,calcium{:});        % 3D numerical array
         calcium = num2cell(calcium,[1 3]);  % cell array of 2D arrays
-        calcium = fn_map(@(x)squeeze(x),calcium);
+        calcium = brick.map(@(x)squeeze(x),calcium);
     else
         error 'spikes and calcium data sets do not match'
     end
@@ -229,7 +229,7 @@ if ngraph==1 && isempty(gridsize)
     if isempty(in)
         ha = gca;
     else
-        fn_isfigurehandle(in);
+        brick.isfigurehandle(in);
         switch get(in,'type')
             case {'figure' 'uipanel'}
                 ha = findobj(in,'type','axes');
@@ -256,7 +256,7 @@ else
         doxlabel = true(1,ngraph);
         doylabel = true(1,ngraph);
     else
-        fn_isfigurehandle(in);
+        brick.isfigurehandle(in);
         hf = in;
         switch get(hf,'type')
             case 'figure'
@@ -308,7 +308,7 @@ end
 xx = double(calcium{1});
 avgcalcium = mean(xx);
 dodf = (avgcalcium(1)>.9 && avgcalcium(1)<1.1);
-Flabel = fn_switch(dodf,'F/F_0','F');
+Flabel = brick.switch(dodf,'F/F_0','F');
 
 % Axis size and spike positions
 if isempty(ylim)
@@ -406,7 +406,7 @@ for k=1:ngraph
     
     % display calcium traces
     if isempty(calciumk)
-        T = max(fn_map(@max,spikesk,'array'));
+        T = max(brick.map(@max,spikesk,'array'));
         if isempty(T), T = 1; end
         tt = 0:dt(k):T;
     else
@@ -429,7 +429,7 @@ for k=1:ngraph
         for i=1:ne
             tpos = ev.time(i) + [-1 1]*.2;
             ypos = double(max(ck(tt>tpos(1) & tt<tpos(2))));
-            fn_arrow(ev.time(i)*[1 1],ypos+spikeheight*[1 .2],'40%',40,.4, ...
+            brick.arrow(ev.time(i)*[1 1],ypos+spikeheight*[1 .2],'40%',40,.4, ...
                 'patch','color','m')
             if strcmp(calciumeventsmode,'full')
                 str = sprintf('%.0f%% [%i]',ev.amp(i)*100,ev.num(i));
@@ -442,7 +442,7 @@ for k=1:ngraph
 
     % display spikes
     for i=1:(length(spikesk)-dorate)
-        fn_spikedisplay(spikesk{i},yspike(i),spikeheight,'parent',ha(k), ...
+        brick.spikedisplay(spikesk{i},yspike(i),spikeheight,'parent',ha(k), ...
             'color',spikecol(i),'linewidth',spkwidth)
     end
     if length(spikesk)==2 && ~dorate
@@ -457,14 +457,14 @@ for k=1:ngraph
         stats.fd(k) = stats.falsed(k)/stats.detections(k);
         stats.ER(k) = f1score(stats.miss(k),stats.fd(k));
         
-        fn_spikedisplay(spikesk{1}(desc.miss0),yspike(1),'parent',ha(k), ...
+        brick.spikedisplay(spikesk{1}(desc.miss0),yspike(1),'parent',ha(k), ...
             'marker',decfalsep(1),'markersize',decsiz(2,1),'linewidth',spkwidth,'color',spikecol(1))
-        fn_spikedisplay(spikesk{1}(desc.miss1),yspike(1),'parent',ha(k), ...
+        brick.spikedisplay(spikesk{1}(desc.miss1),yspike(1),'parent',ha(k), ...
             'marker',decfalsep(2),'markersize',decsiz(2,2),'linewidth',spkwidth,'color',spikecol(1))
         
-        fn_spikedisplay(spikesk{2}(desc.falsep0),yspike(2),'parent',ha(k), ...
+        brick.spikedisplay(spikesk{2}(desc.falsep0),yspike(2),'parent',ha(k), ...
             'marker',decmisses(1),'markersize',decsiz(1,1),'linewidth',spkwidth,'color',spikecol(2))
-        fn_spikedisplay(spikesk{2}(desc.falsep1),yspike(2),'parent',ha(k), ...
+        brick.spikedisplay(spikesk{2}(desc.falsep1),yspike(2),'parent',ha(k), ...
             'marker',decmisses(2),'markersize',decsiz(1,2),'linewidth',spkwidth,'color',spikecol(2))
         
         for i=1:size(desc.perfectshift,2)
@@ -501,9 +501,9 @@ for k=1:ngraph
         % superimpose the ground truth
         if length(spikesk)==2
             % spike count
-            spkcount = fn_timevector(spikesk{1},tt,'count');
+            spkcount = brick.timevector(spikesk{1},tt,'count');
             % smooth
-            spkcount = fn_filt(spkcount,.2/dt(k),'l');
+            spkcount = brick.filt(spkcount,.2/dt(k),'l');
             % scale
             spkcount = ratefact*spkcount;
             % display
@@ -516,8 +516,8 @@ for k=1:ngraph
     % auto-detect burst and display number of spikes per burst
     if isempty(burstdelay), burstdelay = .3; end
     nsp = length(spikesk)-dorate;
-    dtext = 0; %fn_coordinates(ha(k),'b2a',[1 0],'vector'); dtext = 4*dtext(1);
-    spk = zeros(1,0); for i=1:nsp, spk = row(union(spk,spikesk{i})); end
+    dtext = 0; %brick.coordinates(ha(k),'b2a',[1 0],'vector'); dtext = 4*dtext(1);
+    spk = zeros(1,0); for i=1:nsp, spk = brick.row(union(spk,spikesk{i})); end
     if ~isempty(spk)
         delays = diff(spk);
         kburst = [1 1+find(delays>burstdelay)];
@@ -548,11 +548,11 @@ for k=1:ngraph
     if strcmp(displaymode,'factorbox')
         % graph not visible, but lines to help reading
         set(ha,'visible','off')
-        ylstep = fn_switch(ylim(2)<2,.1,ylim(2)<5,.5,1);
-        yl1 = min(1,fn_round(ylim(1),ylstep,'ceil'));
-        yl2 = fn_round(ylim(2),ylstep,'floor');
+        ylstep = brick.switch(ylim(2)<2,.1,ylim(2)<5,.5,1);
+        yl1 = min(1,brick.round(ylim(1),ylstep,'ceil'));
+        yl2 = brick.round(ylim(2),ylstep,'floor');
         yll = yl1:ylstep:yl2;
-        hl = fn_lines('y',yll,'color',[1 1 1]*.6,'linestyle',':');
+        hl = brick.lines('y',yll,'color',[1 1 1]*.6,'linestyle',':');
         set(hl(yll==1),'linestyle','-')
         for i=1:length(hl), uistack(hl(i),'bottom'), end
     end
@@ -560,7 +560,7 @@ for k=1:ngraph
 end
 
 % Display global stats
-if okstat && fn_ismemberstr(statflag,{'global' 'title'})
+if okstat && brick.ismemberstr(statflag,{'global' 'title'})
     %     fprintf('distance between spike trains: %.2f\n',sum(stats.d));
     %     fprintf('\b [misses: %.1f%%, false positives: %.1f%%]\n', ...
     %         sum(stats.miss)/sum(stats.real)*100,sum(stats.fp)/sum(stats.detect)*100);
@@ -583,7 +583,7 @@ end
 
 % % Save figure automatically when in "factor box" mode
 % if strcmp(displaymode,'factorbox')
-%     fn_savefig(get(ha(1),'parent'),'autoname','pdf','scaling',1)
+%     brick.savefig(get(ha(1),'parent'),'autoname','pdf','scaling',1)
 % end
 
 % Output
@@ -599,6 +599,6 @@ end
 % amp = max(calcium(:))-m;
 % 
 % a = min(avg-st/2,m-(avg-m)/10);
-% d = fn_switch(avg,0,st/10,max(m/50,st/10));
+% d = brick.switch(avg,0,st/10,max(m/50,st/10));
 % 
-% fn_spikedisplay(spikes,[a a-d]*avg,'color','k')
+% brick.spikedisplay(spikes,[a a-d]*avg,'color','k')
