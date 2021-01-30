@@ -374,6 +374,11 @@ function [n Ffit par LL xest drift]= backward(F,par)
 % input
 F = double(F(:));
 
+% make sur we have F/F0 signal
+if any(F<0)
+    error 'input signal to MLspike should be F/F0, not DF/F'
+end
+
 % some parameter checks
 if ~any(strcmpi(par.algo.estimate,{'MAP' 'proba' 'sample' 'samples'}))
     error 'parameter algo.estimate should be either ''MAP'' (return a unique spike train), ''proba'' (return spike probabilities) or ''samples'' (return algo.nsample sample spike trains)'
@@ -1003,7 +1008,7 @@ end
 % L(x,t) remembers what is the best log-likelihood with xt=x
 % L(x,t) = min_{x(t+1),..,x(T)} -log(p(x(t+1),..,x(T),y(t),..,y(T)|x(t)=x))
 % while N(x,t+1) and D(x,t+1) remember respectively the number of spikes
-% between t and t+1 and the baseline drift that give this best likelihood
+% between t and t+1 and the baseline drift that give this best likelihoo
 % N(c,b,t) = argmin_n(t+1) min_{x(t+2),..,x(T)}        -log(p(n(t+1),x(t+2),..,x(T),y(t+1),..,y(T)|c(t)=c,b(t+1)=b))
 % D(c,b,t) = argmin_b(t+1) min_{n(t+1),x(t+2),..,x(T)} -log(p(x(t+1),x(t+2),..,x(T),y(t+1),..,y(T)|c(t)=c,b(t)=b))
 if ~doMAP
