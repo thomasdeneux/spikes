@@ -30,7 +30,7 @@ yrange = .03;
 brick.figure('SPF MONITOR','nofocus','noerase')
 for datanum = 1:10
     subplot(2,5,datanum)
-    dataflag = brick.switch(datanum,2,92,datanum);
+    dataflag = brick.switch_case(datanum,2,92,datanum);
     res = [x([x.datanum] == datanum).res];
     n = length(res);
     if n==0, continue, end
@@ -53,6 +53,6 @@ for datanum = 1:10
     hold off
     set(gca,'ylim',max([res.score])+[-1 .1]*yrange)
     set(hall(~[res.running]),'xdata',get(gca,'xlim'))
-    title(sprintf('Dataset %i',datanum),'fontweight',brick.switch(any([res.running]),'bold','normal'))
+    title(sprintf('Dataset %i',datanum),'fontweight',brick.switch_case(any([res.running]),'bold','normal'))
     legend(hall,{res.method},'location','SouthEast')
 end

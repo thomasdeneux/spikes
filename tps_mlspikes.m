@@ -72,7 +72,7 @@ else
 end
 displaymode = par(1).display;
 if strcmp(displaymode,'default')
-    displaymode = brick.switch(ndata==1,'steps','count');
+    displaymode = brick.switch_case(ndata==1,'steps','count');
     [par.display] = deal(displaymode);
 end
 
@@ -108,7 +108,7 @@ if iscell(x)
     if nout>=4, varargout{4} = [varargout{4}{:}]; end
     if ~xiscell
         for i=setdiff(1:nout,[3 4])
-            dim = brick.switch(isvector(varargout{i}{1}),2,3);
+            dim = brick.switch_case(isvector(varargout{i}{1}),2,3);
             varargout{i} = cat(dim,varargout{i}{:}); 
         end
     end
@@ -458,7 +458,7 @@ end
 % display
 if par.dographsummary
     ha = initgraphsummary;
-    n1 = brick.switch(par.special.nonintegerspike_minamp>0,round(n*par.a*100),n);
+    n1 = brick.switch_case(par.special.nonintegerspike_minamp>0,round(n*par.a*100),n);
     if doMAP
         spk_display(par.dt,n1,{F Ffit drift},'in',ha(4))
     elseif strcmpi(par.algo.estimate,'proba')
@@ -497,8 +497,8 @@ estimate = par.algo.estimate;
 doMAP = strcmpi(estimate,'MAP');
 doproba = strcmp(estimate,'proba');
 dosample = ismember(estimate,{'sample' 'samples'});
-interpmode = brick.switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
-nsample = brick.switch(dosample,par.algo.nsample,1);
+interpmode = brick.switch_case(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
+nsample = brick.switch_case(dosample,par.algo.nsample,1);
 
 % Special: non-integer spikes
 if par.special.nonintegerspike_minamp, error 'noninteger spikes not handled with a fixed baseline', end
@@ -826,8 +826,8 @@ estimate = par.algo.estimate;
 doMAP = strcmpi(estimate,'MAP');
 doproba = strcmp(estimate,'proba');
 dosample = ismember(estimate,{'sample' 'samples'});
-interpmode = brick.switch(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
-nsample = brick.switch(dosample,par.algo.nsample,1);
+interpmode = brick.switch_case(doMAP,par.algo.interpmode,'linear'); % spline interpolation can yield negative weights, which is not acceptable for probabilities
+nsample = brick.switch_case(dosample,par.algo.nsample,1);
 
 % GPU implementation?
 dogpu = par.algo.dogpu;
@@ -1668,7 +1668,7 @@ for t=T:-1:1
         drawnow
     end
 end
-brick.progress end
+brick.progresss
 
 % Forward collecting/sampling/smoothing step
 n = zeros(T,1);

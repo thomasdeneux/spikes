@@ -80,7 +80,7 @@ par.saturation = 0.1; % OGB dye saturation
 % (set noise parameters)
 par.finetune.sigma = .02; % a priori level of noise (if par.finetune.sigma
                           % is left empty, MLspike has a low-level routine 
-                          % to try estimating it from the data
+                          % to try estimating it from the data)
 par.drift.parameter = .01; % if par.drift parameter is not set, the 
                            % algorithm assumes that the baseline remains
                            % flat; it is also possible to tell the

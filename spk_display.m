@@ -87,7 +87,7 @@ while k<length(varargin)
             case {'calciumevents' 'calciumeventsfull'}
                 k = k+1;
                 calciumevents = varargin{k};
-                calciumeventsmode = brick.switch(a,'calciumevents','simple','calciumeventsfull','full');
+                calciumeventsmode = brick.switch_case(a,'calciumevents','simple','calciumeventsfull','full');
             case 'displaymode'
                 k = k+1;
                 displaymode = varargin{k};
@@ -308,7 +308,7 @@ end
 xx = double(calcium{1});
 avgcalcium = mean(xx);
 dodf = (avgcalcium(1)>.9 && avgcalcium(1)<1.1);
-Flabel = brick.switch(dodf,'F/F_0','F');
+Flabel = brick.switch_case(dodf,'F/F_0','F');
 
 % Axis size and spike positions
 if isempty(ylim)
@@ -548,7 +548,7 @@ for k=1:ngraph
     if strcmp(displaymode,'factorbox')
         % graph not visible, but lines to help reading
         set(ha,'visible','off')
-        ylstep = brick.switch(ylim(2)<2,.1,ylim(2)<5,.5,1);
+        ylstep = brick.switch_case(ylim(2)<2,.1,ylim(2)<5,.5,1);
         yl1 = min(1,brick.round(ylim(1),ylstep,'ceil'));
         yl2 = brick.round(ylim(2),ylstep,'floor');
         yll = yl1:ylstep:yl2;
@@ -599,6 +599,6 @@ end
 % amp = max(calcium(:))-m;
 % 
 % a = min(avg-st/2,m-(avg-m)/10);
-% d = brick.switch(avg,0,st/10,max(m/50,st/10));
+% d = brick.switch_case(avg,0,st/10,max(m/50,st/10));
 % 
 % brick.spikedisplay(spikes,[a a-d]*avg,'color','k')

@@ -7,9 +7,9 @@ dopar = (nargin>=2);
 % Default parameters
 defpar = tps_mlspikes('par');
 methodflagstr = num2str(methodflag);
-method = brick.switch(methodflagstr(1),{'1' '7'},'MAP',{'2' '4' '5' '6'},'proba','3','samples');
-nonlinearity = brick.switch(methodflagstr(1),{'1' '2' '3' '4' '7'},'saturation',{'5' '6'},'pnonlin');
-doautosigma = brick.switch(methodflagstr(1),{'1' '2' '3' '5'},false,{'4' '6' '7'},true);
+method = brick.switch_case(methodflagstr(1),{'1' '7'},'MAP',{'2' '4' '5' '6'},'proba','3','samples');
+nonlinearity = brick.switch_case(methodflagstr(1),{'1' '2' '3' '4' '7'},'saturation',{'5' '6'},'pnonlin');
+doautosigma = brick.switch_case(methodflagstr(1),{'1' '2' '3' '5'},false,{'4' '6' '7'},true);
 if doautosigma
     defpar.finetune.autosigmasettings = spk_autosigma('par');
 end

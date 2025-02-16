@@ -154,7 +154,7 @@ classdef spk_demoGUI < hgsetget
             % default values
             pest = tps_mlspikes('par');
             % regular parameters
-            pest.algo.estimate = brick.switch(p.output, ...
+            pest.algo.estimate = brick.switch_case(p.output, ...
                 'MAP spike train','MAP','spike probabilities','proba','spike samples','samples');
             if strcmp(pest.algo.estimate,'samples')
                 pest.algo.nsample = 4;

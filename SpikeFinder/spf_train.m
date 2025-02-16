@@ -58,7 +58,7 @@ dsave = spf_folders('precomp');
 if ~exist(dsave,'dir'), mkdir(dsave), end
 methodflagstr = num2str(methodflag);
 [method defpar parsetnames] = spf_parameters(methodflag);    
-nonlinearity = brick.switch(parsetnames{3},'saturation','saturation','p2','pnonlin');
+nonlinearity = brick.switch_case(parsetnames{3},'saturation','saturation','p2','pnonlin');
 doautosigma = isstruct(defpar.finetune.autosigmasettings);
 fsave = fullfile(dsave,sprintf('%s%s-dataset%i.mat',method,methodflagstr,dataflag));
 fprintf('Method %s%s - Dataset %i\n',method,methodflagstr,dataflag)

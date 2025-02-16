@@ -93,8 +93,8 @@ for k = 1:length(summary)
         % display
         for i=1:length(resk)
             reski = resk(i);
-            str = brick.switch(i==1,sprintf('Dataset %.2i: ',sk.dataflag),repmat(' ',1,12));
-            runflag = brick.switch(reski.running,' [running]','');
+            str = brick.switch_case(i==1,sprintf('Dataset %.2i: ',sk.dataflag),repmat(' ',1,12));
+            runflag = brick.switch_case(reski.running,' [running]','');
             fprintf('%s%.5f using %s%s (parset=',str,reski.score,reski.method,runflag)
             fprintf('%.4f ',reski.parset)
             fprintf('\b, smooth=%.4f, delay=%.4f)\n',reski.smooth,reski.delay)

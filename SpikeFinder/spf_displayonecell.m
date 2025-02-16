@@ -65,7 +65,7 @@ for i=1:nsplit
         driftsplit{i} = x.drift(1+round((i-1)*ntcalcium/nsplit):round(i*ntcalcium/nsplit));
     end
 end
-rateflag = brick.switch(~doest || doMAP,{},{'rate'});
+rateflag = brick.switch_case(~doest || doMAP,{},{'rate'});
 if doest
     spk_display(dtcalcium,{spikesplit spikestsplit},{calciumsplit fitsplit driftsplit},'ncol',1,rateflag{:})
 else

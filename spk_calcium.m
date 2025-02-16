@@ -194,7 +194,7 @@ switch par.type
         end
         % dynamic system
         decay = exp(-dt/tau);
-        ct = brick.switch(isempty(par.x0),0,par.x0);
+        ct = brick.switch_case(isempty(par.x0),0,par.x0);
         c = zeros(nt,1);
         for i=1:nt
             ct = ct*decay + increase(i);

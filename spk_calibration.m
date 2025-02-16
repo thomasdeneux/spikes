@@ -83,7 +83,7 @@ if ~noest
     
     opt = optimset('Algorithm','interior-point', ... note that previous choice of 'active-set' was sometimes getting stuck in "not even local minima"!!
         'maxfunevals',10000,'tolx',1e-20,'tolfun',1e-5, ...
-        'display',brick.switch(pcal.display,'debug','iter',pcal.display)); %,'PlotFcns',{@optimplotx,@optimplotfval,@optimplotstepsize,@optimplotconstrviolation});
+        'display',brick.switch_case(pcal.display,'debug','iter',pcal.display)); %,'PlotFcns',{@optimplotx,@optimplotfval,@optimplotstepsize,@optimplotconstrviolation});
     % parameters: a, tau, saturation, delay, global contribution, p2, p3, hill, c0, ton
     pstart = [.1 1 -2 0 .5 0 0 1 .5 .005]; % we estimate the log of the saturation
     LB = [0 .1 -4 -.05 0 -5 -5 .5 0 0 0];
